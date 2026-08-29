@@ -1,0 +1,28 @@
+{
+  "name": "forio-proxy-express-starter",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "deploy": "tsx tools/deploy.ts",
+    "typecheck": "tsc --noEmit",
+    "stop": "tsx tools/stop.ts",
+    "log": "tsx tools/log.ts"
+  },
+  "author": "MPQ",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "epicenter-libs": "^3.28.4",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.3.2",
+    "openai": "^4.95.1"
+  },
+  "devDependencies": {
+    "@types/archiver": "^6.0.3",
+    "@types/node": "^22.14.0",
+    "archiver": "^7.0.1",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3"
+  }
+}

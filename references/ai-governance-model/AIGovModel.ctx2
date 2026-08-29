@@ -1,0 +1,38 @@
+{
+    "variables": {
+        "AverageMinistryScore": {
+            "save": true
+        },
+        "TrustInGovernment": {
+            "save": true
+        }, 
+        "TeamName": {
+            "save": true
+        },
+        "NumYears": {
+            "save": true
+        },
+        "Step": {
+            "save": true
+        },
+        "Time": {
+            "save": true
+        },
+        "settingsID": {
+            "save": true
+        },
+        "EconomyScore": {
+            "save": true
+        },
+        "EnvironmentScore": {
+            "save": true
+        },
+        "DefenseScore": {
+            "save": true
+        },
+        "EducationScore": {
+            "save": true
+        }
+    }
+
+}

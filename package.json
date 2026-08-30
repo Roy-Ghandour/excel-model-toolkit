@@ -1,0 +1,19 @@
+{
+  "name": "modelkit",
+  "version": "0.1.0",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "simulate": "node bin/simulate.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "Headless test-suite / sweep tool for Forio Epicenter Excel models",
+  "type": "module",
+  "dependencies": {
+    "epicenter-libs": "^3.35.0"
+  }
+}

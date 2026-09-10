@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { HyperFormula } from 'hyperformula';
 import { readWorkbook } from '../src/drivers/local/workbook.js';
-import { MODEL_PATH } from '../src/config.js';
+import { MODEL_PATH } from './model.js';
 
 /**
- * Oracle 0: does our engine agree with **Excel itself**?
+ * Does our engine agree with **Excel itself**?
  *
  * Every formula cell in an `.xlsx` carries the value Microsoft Excel last computed
  * for it. That makes the model file its own answer key — we can recalculate the

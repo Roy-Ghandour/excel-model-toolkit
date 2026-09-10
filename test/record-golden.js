@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 import { writeFile } from 'node:fs/promises';
 import { createForioDriver } from '../src/drivers/forio/forioDriver.js';
-import { FORIO, MAX_STEP, MODEL_FILE } from '../src/config.js';
-import { GOLDEN_PATH, REPORTED, TRANSACTION } from './trace.js';
+import { FORIO, GOLDEN_PATH, MAX_STEP, MODEL_FILE, REPORTED, TRANSACTION } from './model.js';
 
 /**
  * Record a real Forio run to `test/golden/test.xlsx.trace.json`.
@@ -11,10 +10,10 @@ import { GOLDEN_PATH, REPORTED, TRANSACTION } from './trace.js';
  * driver, both test suites — runs offline against what this produces. That is the
  * point: pay for one authoritative run, then assert against it forever.
  *
- * The sequence below deliberately mirrors `simulate()` exactly (write the
- * transaction into the current year's column, step, read). If `simulate` ever
- * changes shape, this must change with it or the golden file stops being evidence
- * about the thing we actually run.
+ * The sequence below — write the transaction into the current step's column, step,
+ * read everything back — is the sequence a sweep performs. It is defined here and
+ * nowhere else: `test/` deliberately owns its own copy of the loop rather than
+ * importing one from `src/`, which is still changing shape week to week.
  *
  * Re-record only when `test.xlsx` changes — which is manual and rare, since the tool
  * cares about exactly one model file at a time.

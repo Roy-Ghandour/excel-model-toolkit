@@ -1,5 +1,5 @@
-import { createForioDriver } from './forioDriver.js';
-import { FORIO, MAX_STEP, MODEL_FILE } from './config.js';
+import { createLocalDriver } from '../drivers/local/localDriver.js';
+import { MAX_STEP, MODEL_PATH } from '../config.js';
 
 /**
  * Drive one run of the test model: at every step write `transactionAmount = 10`
@@ -19,12 +19,12 @@ const TRANSACTION = 10;
 const money = (n) => n.toFixed(2).padStart(10);
 
 export async function simulate({ steps = MAX_STEP, transaction = TRANSACTION } = {}) {
-    const driver = await createForioDriver({ ...FORIO, modelFile: MODEL_FILE });
+    const driver = await createLocalDriver({ modelPath: MODEL_PATH });
 
-    const runKey = await driver.createRun();
-    console.log(`run ${runKey}\n`);
+    const run = driver.createRun();
+    console.log(`run ${run.id}\n`);
 
-    const initial = await driver.read(runKey, REPORTED);
+    const initial = run.read(REPORTED);
     console.log('  step   transaction      balance');
     console.log('  ----   -----------   ----------');
     console.log(`  ${String(initial.Step).padStart(4)}             -   ${money(initial.Balance[initial.Step])}`);
@@ -34,10 +34,10 @@ export async function simulate({ steps = MAX_STEP, transaction = TRANSACTION } =
         // The transaction for year `current` goes into that year's column, and
         // shows up in the *next* year's balance:
         //   Balance[t] = (Balance[t-1] + transactionAmount[t-1]) * (1 + rate)
-        await driver.write(runKey, current, { transactionAmount: transaction });
-        await driver.step(runKey);
+        run.write(current, { transactionAmount: transaction });
+        run.step();
 
-        state = await driver.read(runKey, REPORTED);
+        state = run.read(REPORTED);
         const at = state.Step;
         console.log(`  ${String(at).padStart(4)}   ${String(transaction).padStart(11)}   ${money(state.Balance[at])}`);
     }
@@ -45,6 +45,5 @@ export async function simulate({ steps = MAX_STEP, transaction = TRANSACTION } =
     console.log(`\nfinal Balance: [${state.Balance.map((b) => b.toFixed(2)).join(', ')}]`);
     console.log(`transactionAmount: [${state.transactionAmount.join(', ')}]`);
 
-    await driver.dispose(runKey);
     return state;
 }

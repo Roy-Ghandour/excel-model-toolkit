@@ -4,6 +4,7 @@ import {
   runAdapter,
   SCOPE_BOUNDARY,
 } from "epicenter-libs";
+import { assertWritable } from "../common.js";
 
 /**
  * The only module that knows we are talking to Forio.
@@ -141,11 +142,12 @@ export async function createForioDriver({ account, project, modelFile }) {
           `write(runKey, step, updates): step must be a non-negative integer, received: ${step}`
         );
       }
+
       const payload = Object.fromEntries(
-        Object.entries(updates).map(([name, value]) => [
-          cellKey(name, step),
-          value,
-        ])
+        Object.entries(updates).map(([name, value]) => {
+          assertWritable(name, value);
+          return [cellKey(name, step), value];
+        })
       );
       return runAdapter.updateVariables(runKey, payload);
     },

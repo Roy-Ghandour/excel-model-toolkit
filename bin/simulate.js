@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { simulate } from '../src/simulate.js';
+import { simulate } from '../src/tools/simulate.js';
 import { MAX_STEP } from '../src/config.js';
 
 const args = process.argv.slice(2);

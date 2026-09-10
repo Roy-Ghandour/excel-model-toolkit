@@ -15,6 +15,16 @@ export const FORIO = {
 export const MODEL_FILE = 'test.xlsx';
 
 /**
+ * The same model on disk — what the local driver reads.
+ *
+ * Resolved from this module rather than `process.cwd()` so the path holds however
+ * the tool is invoked. The repo's `test.xlsx` is byte-identical to the copy uploaded
+ * to Forio; keeping them in sync is manual, and the golden trace under `test/` is
+ * what catches them drifting apart.
+ */
+export const MODEL_PATH = new URL('../test.xlsx', import.meta.url);
+
+/**
  * How many steps the test model's timeline supports.
  * `Time` is B6:N6 → columns 0..12, so 12 steps can be taken from step 0.
  */

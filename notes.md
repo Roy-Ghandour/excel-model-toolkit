@@ -1,6 +1,5 @@
 # Notes:
 
 - We need JSDOC documentation on everything
-- The write function needs a better api this is very forio coded
 - Having two files called simulate is confusing
--
+- Model name and path in the config is temporary would vary by tool call

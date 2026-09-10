@@ -1,0 +1,27 @@
+{
+  "modelkit": 1,
+
+  "id": "532aa1475d0bce08",
+  "label": "a richer opening balance, a better rate, and deposits that change year to year",
+  "simulation": "savings",
+
+  "model": {
+    "file": "test.xlsx"
+  },
+
+  "settings": {
+    "initialBalance": 1000,
+    "interestRate": 0.07
+  },
+
+  "steps": [
+    { "transactionAmount": 250 },
+    { "transactionAmount": 250 },
+    { "transactionAmount": 0 },
+    { "transactionAmount": -100 },
+    { "transactionAmount": 400 },
+    { "transactionAmount": 0 },
+    { "transactionAmount": 125 },
+    { "transactionAmount": 125 }
+  ]
+}

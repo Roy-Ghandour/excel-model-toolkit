@@ -1,0 +1,67 @@
+// A run file, with every field it may carry.
+//
+// This is a reference, not a runnable file: `AIGovModel.xlsx` is not in this repo
+// JSON has no comments — so this is `.jsonc`.
+
+{
+  // REQUIRED - format version of the run file itself
+  "modelkit": 1,
+
+  // OPTIONAL - sha256 over `settings` + `steps`, first 16 hex. Every generated
+  // run file carries one; a hand-written file may omit it and have it computed.
+  "id": "dd891207bc59e44f",
+
+  // OPTIONAL - free text, human written description
+  "label": "run 7 - defense collapsed in year 3",
+
+  // OPTIONAL - when the file was generated
+  "createdAt": "2026-09-10T14:02:11.408Z",
+
+  // REQUIRED - shortname for simulation, determines ruleset for validation
+  "simulation": "aigov",
+
+  // REQUIRED - details of the model this run was generated against
+  "model": {
+    // REQUIRED - the model file's name.
+    "file": "AIGovModel.xlsx",
+
+    // OPTIONAL - model version using semver
+    "version": "2.3.0",
+
+    // OPTIONAL - exact identity of the model file this run was generated against.
+    "sha256": "9f2c1bce4a77d0e35b18f2a9c6d41e8073b5aa2f19c8e6d4b03f7a1c5e92d846"
+  },
+
+  // OPTIONAL - how this file came to exist. Absent on hand-written run files.
+  "origin": {
+    // REQUIRED when `origin` is present - which tool wrote this file.
+    "tool": "sweep",
+
+    // Everything below is the sweep tool's own; another tool sets other fields.
+    "sweepId": "aigov-baseline-001",
+    "index": 7,
+    "seed": "20260910:7"
+  },
+
+  // OPTIONAL - named ranges written once, before any stepping. Use for settings
+  // or welcome processes
+  "settings": {
+    "NumYears": 4,
+    "EcEnabled": 1,
+    "EnvEnabled": 1,
+    "DefEnabled": 1,
+    "EduEnabled": 1,
+    "_C1Enabled": 1,
+    "_C2Enabled": 0,
+    "AIFeedbackEnabled": 0
+  },
+
+  // REQUIRED - the decisions, one object per step.
+  // The array index IS the step, so `steps.length` is the length of the run.
+  "steps": [
+    { "EcPro3New": 1, "EcPro7New": 1, "EnvPro2New": 1, "EcSlider": 0.4 },
+    { "DefPro1New": 1, "EduPro5New": 1, "EcSlider": 0.55 },
+    { "EnvPro9New": 1, "EcSlider": 0.55, "DefSlider": 0.2 },
+    { "EduPro2New": 1, "EcSlider": 0.6 }
+  ]
+}

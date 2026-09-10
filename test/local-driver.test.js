@@ -231,7 +231,8 @@ test('stepping increments `Step` and reports where the run now is', async () => 
 
 test('nothing stops a run stepping past the end of its timeline', async () => {
     // Documented, not endorsed. `Step` is a single cell with no bound, so the guard
-    // lives in the caller — `bin/simulate.js` has one. A sweep will need its own.
+    // lives in the caller. Replaying a run file overruns via `write` first, which
+    // does refuse a step past a timeline's last column. A sweep will need its own.
     const driver = await savings();
     const run = driver.createRun();
 

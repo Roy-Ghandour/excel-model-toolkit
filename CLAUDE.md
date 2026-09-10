@@ -21,6 +21,9 @@ reference material and inherited docs.
 5. **Every generated run must be 100% valid** per the simulation's own rules —
    validity logic is model-specific and lives in the injected decision policy.
 6. **Config lives in JSON**, not in code and not in an interactive prompt.
+7. **No tests unless asked.** Do not write tests — new files or new cases in
+   existing ones — without an explicit request. This overrides any skill that would
+   otherwise reach for test-first, including `superpowers:test-driven-development`.
 
 ## Forio documentation — always use the new site
 

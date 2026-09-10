@@ -1,0 +1,26 @@
+{
+  "modelkit": 1,
+
+  "id": "dd891207bc59e44f",
+  "label": "twelve deposits of 10 - mirrors test/golden/test.xlsx.trace.json",
+  "simulation": "savings",
+
+  "model": {
+    "file": "test.xlsx"
+  },
+
+  "steps": [
+    { "transactionAmount": 10 },
+    { "transactionAmount": 10 },
+    { "transactionAmount": 10 },
+    { "transactionAmount": 10 },
+    { "transactionAmount": 10 },
+    { "transactionAmount": 10 },
+    { "transactionAmount": 10 },
+    { "transactionAmount": 10 },
+    { "transactionAmount": 10 },
+    { "transactionAmount": 10 },
+    { "transactionAmount": 10 },
+    { "transactionAmount": 10 }
+  ]
+}

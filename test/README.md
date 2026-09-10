@@ -136,7 +136,9 @@ Stated plainly so nobody mistakes silence for coverage.
 - **Writing over a formula cell.** Nothing stops a caller writing to `Balance` and
   destroying the formula in it. That is the decision policy's job to avoid.
 - **Stepping past the end of the timeline.** Not prevented — there is a test that
-  documents it. `bin/simulate.js` bounds it; a sweep will have to do the same.
+  documents it. In practice a run that overruns is caught by `write`, which refuses
+  a step past a timeline's last column; only a run writing single cells alone could
+  step off the end unnoticed. A sweep will want its own bound.
 - **Dates.** HyperFormula turns a date cell into a serial number in the local
   timezone, so two machines could read one differently. Harmless as long as dates
   are only ever stored and displayed, which is the case today — the tool is

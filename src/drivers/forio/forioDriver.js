@@ -1,6 +1,7 @@
 import {
   authAdapter,
   config,
+  projectAdapter,
   runAdapter,
   SCOPE_BOUNDARY,
 } from "epicenter-libs";
@@ -9,37 +10,10 @@ import { assertWritable } from "../common.js";
 /**
  * The only module that knows we are talking to Forio.
  *
- * A stateless library of commands: `createForioDriver` resolves everything
- * model-invariant up front and closes over it, so the returned driver never
- * tracks which runs are alive. Callers pass a `runKey` and a `step` every time.
- *
+ * `createForioDriver` logs in and resolves everything model-invariant up front.
+ * Each run it creates owns its runKey, matching the local driver's run shape, so
+ * `replay` drives either without knowing which.
  */
-
-/**
- * Clear any cached session so we act as a clean anonymous user. In Node the
- * session store is an in-process Map, so this is nearly always a no-op — but a
- * stale session bound to another account produces a baffling
- * "PSEUDONYM_KEY does not belong to account" error, and the guard is free.
- */
-async function ensureAnonymous() {
-  if (authAdapter.getLocalSession()) {
-    await authAdapter.removeLocalSession();
-  }
-}
-
-/**
- * The project's scope key, needed to create PROJECT-scoped runs.
- *
- * On a PUBLIC project `projectAdapter.get()` returns 401 anonymously, so we
- * cannot look the key up directly. `createSingular` *does* work anonymously and
- * its response carries `scope.scopeKey` — so we mint the (harmless, shared)
- * singular run once purely to discover the key. This indirection is load-bearing;
- * it is not an accident.
- */
-async function fetchScopeKey(modelFile) {
-  const singular = await runAdapter.createSingular(modelFile);
-  return singular.scope.scopeKey;
-}
 
 /**
  * Fold introspection output into `Map<name, { rows, cols }>`.
@@ -65,19 +39,29 @@ function toSchema(info) {
 }
 
 /**
- * Connect to a model and return a driver bound to it.
+ * Log in and return a driver bound to one model on one project.
  *
- * Note `config` is a process-wide singleton inside epicenter-libs, so two drivers
- * in one process must target the same account/project. Per-call routing overrides
- * exist in the SDK if that ever needs to change.
+ * Targets a private project on a team account, where only account admins can
+ * create runs — so we log in as one. After `login` the SDK attaches the session
+ * token to every request itself.
  *
+ * Note `config` and the session are process-wide singletons inside epicenter-libs,
+ * so two drivers in one process must target the same account/project.
+ *
+ * @param {{ account: string, project: string, modelFile: string, credentials: { handle: string, password: string } }} options
  */
-export async function createForioDriver({ account, project, modelFile }) {
+export async function createForioDriver({
+  account,
+  project,
+  modelFile,
+  credentials,
+}) {
   config.accountShortName = account;
   config.projectShortName = project;
 
-  await ensureAnonymous();
-  const scopeKey = await fetchScopeKey(modelFile);
+  // Project-scoped admin login: POST /{account}/{project}/authentication. Team accounts only.
+  await authAdapter.login(credentials, { objectType: "admin" });
+  const { projectKey: scopeKey } = await projectAdapter.get();
   const schema = toSchema(await runAdapter.introspect(modelFile));
 
   /**
@@ -115,56 +99,59 @@ export async function createForioDriver({ account, project, modelFile }) {
     schema,
 
     /**
-     * Create a fresh PROJECT-scoped run. Each call is an independent run starting
-     * at Step 0, so "reset" is just another `createRun`.
+     * Create a fresh PROJECT-scoped run at Step 0, so "reset" is just another
+     * `createRun`. The returned run lives on Forio until `dispose` removes it.
      */
     async createRun() {
-      const run = await runAdapter.create(modelFile, {
+      const { runKey } = await runAdapter.create(modelFile, {
         scopeBoundary: SCOPE_BOUNDARY.PROJECT,
         scopeKey,
       });
-      return run.runKey;
-    },
 
-    /** Read named ranges. Timelines come back as arrays, single cells as scalars. */
-    async read(runKey, names) {
-      return runAdapter.getVariables(runKey, names, { ritual: "REVIVE" });
-    },
+      return {
+        id: runKey,
 
-    /**
-     * Write any number of named ranges in one request. A batch may freely mix
-     * timeline ranges and single cells, so a year's worth of decisions costs one
-     * round trip.
-     */
-    async write(runKey, step, updates) {
-      if (!Number.isInteger(step) || step < 0) {
-        throw new Error(
-          `write(runKey, step, updates): step must be a non-negative integer, received: ${step}`
-        );
-      }
+        /** Read named ranges. Timelines come back as arrays, single cells as scalars. */
+        async read(names) {
+          return runAdapter.getVariables(runKey, names, { ritual: "REVIVE" });
+        },
 
-      const payload = Object.fromEntries(
-        Object.entries(updates).map(([name, value]) => {
-          assertWritable(name, value);
-          return [cellKey(name, step), value];
-        })
-      );
-      return runAdapter.updateVariables(runKey, payload);
-    },
+        /**
+         * Write any number of named ranges in one request. A batch may freely mix
+         * timeline ranges and single cells, so a year's worth of decisions costs one
+         * round trip.
+         */
+        async write(step, updates) {
+          if (!Number.isInteger(step) || step < 0) {
+            throw new Error(
+              `write(step, updates): step must be a non-negative integer, received: ${step}`
+            );
+          }
 
-    /** Advance the model one step; Epicenter increments the `Step` named range. */
-    async step(runKey) {
-      return runAdapter.operation(runKey, "step");
-    },
+          const payload = Object.fromEntries(
+            Object.entries(updates).map(([name, value]) => {
+              assertWritable(name, value);
+              return [cellKey(name, step), value];
+            })
+          );
+          return runAdapter.updateVariables(runKey, payload);
+        },
 
-    /** Best-effort cleanup. A leftover run is untidy, not broken, so never throw. */
-    async dispose(runKey) {
-      try {
-        await runAdapter.remove(runKey);
-        return true;
-      } catch {
-        return false;
-      }
+        /** Advance the model one step; Epicenter increments the `Step` named range. */
+        async step() {
+          return runAdapter.operation(runKey, "step");
+        },
+
+        /** Best-effort cleanup. A leftover run is untidy, not broken, so never throw. */
+        async dispose() {
+          try {
+            await runAdapter.remove(runKey);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+      };
     },
   };
 }

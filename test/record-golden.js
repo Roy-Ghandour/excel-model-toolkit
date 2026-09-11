@@ -18,24 +18,30 @@ import { FORIO, GOLDEN_PATH, MAX_STEP, MODEL_FILE, REPORTED, TRANSACTION } from 
  * Re-record only when `test.xlsx` changes — which is manual and rare, since the tool
  * cares about exactly one model file at a time.
  *
+ * Logs in as a team-account admin: FORIO_HANDLE / FORIO_PASSWORD from `.env`.
+ *
  *     bun run record-golden
  */
 async function recordGolden() {
-    const driver = await createForioDriver({ ...FORIO, modelFile: MODEL_FILE });
-    const runKey = await driver.createRun();
-    console.log(`recording run ${runKey} against ${FORIO.account}/${FORIO.project}`);
+    const driver = await createForioDriver({
+        ...FORIO,
+        modelFile: MODEL_FILE,
+        credentials: { handle: process.env.FORIO_HANDLE, password: process.env.FORIO_PASSWORD },
+    });
+    const run = await driver.createRun();
+    console.log(`recording run ${run.id} against ${FORIO.account}/${FORIO.project}`);
 
     try {
-        const initial = await driver.read(runKey, REPORTED);
+        const initial = await run.read(REPORTED);
         const frames = [];
 
         for (let current = 0; current < MAX_STEP; current++) {
-            await driver.write(runKey, current, { transactionAmount: TRANSACTION });
-            await driver.step(runKey);
+            await run.write(current, { transactionAmount: TRANSACTION });
+            await run.step();
             frames.push({
                 wroteAtStep: current,
                 updates: { transactionAmount: TRANSACTION },
-                state: await driver.read(runKey, REPORTED),
+                state: await run.read(REPORTED),
             });
             process.stdout.write('.');
         }
@@ -55,7 +61,7 @@ async function recordGolden() {
         console.log(`wrote ${frames.length} frames to ${GOLDEN_PATH.pathname}`);
         console.log(`final Balance: ${frames.at(-1).state.Balance.at(-1)}`);
     } finally {
-        await driver.dispose(runKey);
+        await run.dispose();
     }
 }
 

@@ -6,32 +6,42 @@
  * captured *after* stepping, which is the point at which the model has responded to
  * the decision — the same convention a recorded Epicenter run uses.
  *
- * @param {{ schema: Map<string, object>, createRun: () => object }} driver
+ * @param {{ schema: Map<string, object>, createRun: () => object | Promise<object> }} driver
  * @param {{ id?: string, settings?: Record<string, number>, steps: Array<Record<string, number>> }} runFile
- * @returns {{ id: string | undefined, runKey: string, namedRanges: string[], initial: object, steps: Array<{ step: number, writes: object, state: object }>, final: object }}
+ * @param {string[]} [names] The named ranges to read at each step. Defaults to all of them.
+ * @returns {Promise<{ id: string | undefined, runKey: string, namedRanges: string[], initial: object, steps: Array<{ step: number, writes: object, state: object }>, final: object }>}
  */
-export function replay(driver, runFile) {
-  const namedRanges = [...driver.schema.keys()];
-  const run = driver.createRun();
+export async function replay(
+  driver,
+  runFile,
+  names = [...driver.schema.keys()]
+) {
+  const run = await driver.createRun();
 
-  const initial = run.read(namedRanges);
+  try {
+    const initial = await run.read(names);
 
-  // Settings are written at step 0.
-  if (runFile.settings) run.write(0, runFile.settings);
+    // Settings are written at step 0.
+    if (runFile.settings) await run.write(0, runFile.settings);
 
-  const taken = runFile.steps.map((writes, step) => {
-    run.write(step, writes);
-    run.step();
-    return { step, writes, state: run.read(namedRanges) };
-  });
+    const taken = [];
+    for (const [step, writes] of runFile.steps.entries()) {
+      await run.write(step, writes);
+      await run.step();
+      taken.push({ step, writes, state: await run.read(names) });
+    }
 
-  return {
-    id: runFile.id,
-    runKey: run.id,
-    namedRanges,
-    initial,
-    steps: taken,
-    // No steps: the final state is whatever settings left behind.
-    final: taken.length ? taken.at(-1).state : run.read(namedRanges),
-  };
+    return {
+      id: runFile.id,
+      runKey: run.id,
+      namedRanges: names,
+      initial,
+      steps: taken,
+      // No steps: the final state is whatever settings left behind.
+      final: taken.length ? taken.at(-1).state : await run.read(names),
+    };
+  } finally {
+    // Forio runs outlive the process unless removed; local runs have nothing to release.
+    await run.dispose?.();
+  }
 }

@@ -45,7 +45,7 @@ export const execute = {
     if (run.label) console.log(run.label);
     if (run.settings) console.log(`\nsettings   ${decisions(run.settings)}`);
 
-    const trace = replay(driver, run);
+    const trace = await replay(driver, run);
 
     console.log("\n  step   decisions");
     console.log("  ----   ---------");

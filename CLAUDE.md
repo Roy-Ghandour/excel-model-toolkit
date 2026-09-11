@@ -56,8 +56,9 @@ The live sim repo is a sibling: `/Users/roy/Desktop/Work/ai-governance`.
 
 ## Target
 
-Sweeps run against **`ghandourroy` / `model-toolkit-project`** (free, Public,
-personal account). Never against `tr/ai-governance` — that is production.
+Runs go against **`tr` / `temp-project`** (private, team account), set in
+`forio.json`. The driver logs in with project-scoped admin auth, credentials from
+`.env`. Never against `tr/ai-governance` — that is production.
 
 ## Secrets
 

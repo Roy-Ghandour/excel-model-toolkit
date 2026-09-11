@@ -29,9 +29,10 @@ export const MODEL_PATH = new URL('./model/test.xlsx', import.meta.url);
 export const MAX_STEP = 12;
 
 /**
- * The Forio project the golden trace is recorded from. Read only by
+ * The Forio project the golden trace was recorded from. Read only by
  * `record-golden.js` — nothing in `bun test` touches the network.
- * No secrets: the project is PUBLIC, so driving runs is anonymous.
+ * The driver now logs in as a team-account admin, so re-recording needs this
+ * repointed at a team project (this personal one was recorded anonymously).
  */
 export const FORIO = {
     account: 'ghandourroy',

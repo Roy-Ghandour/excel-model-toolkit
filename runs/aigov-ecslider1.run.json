@@ -1,0 +1,17 @@
+{
+  "modelkit": 1,
+
+  "label": "EcSlider1 varied over four years (range 0-3): 1, 3, 0, 2",
+  "simulation": "aigov",
+
+  "model": {
+    "file": "AIGovModel.xlsx"
+  },
+
+  "steps": [
+    { "EcSlider1": 1 },
+    { "EcSlider1": 3 },
+    { "EcSlider1": 0 },
+    { "EcSlider1": 2 }
+  ]
+}

@@ -94,9 +94,13 @@ function cellContent(cell) {
                     ` (shareType '${value.shareType ?? 'none'}'); refusing to guess at its value`
             );
         }
-        if (value.shareType === 'array') {
+        // Modern Excel saves ordinary formulas as dynamic arrays, so an "array"
+        // formula whose `ref` is only its own cell is a plain formula and loads as
+        // one — AIGovModel's 1,512 SWITCH cells are all of this kind. One spanning
+        // several cells would need the engine to spill it too, so refuse that.
+        if (value.shareType === 'array' && value.ref !== cell.address) {
             throw new Error(
-                `${cell.address}: array formulas are not supported yet ('${cell.formula}')`
+                `${cell.address}: array formulas spanning several cells ('${value.ref}') are not supported yet ('${cell.formula}')`
             );
         }
         return normaliseFormula(cell.formula);

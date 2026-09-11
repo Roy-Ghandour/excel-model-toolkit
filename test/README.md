@@ -130,7 +130,14 @@ Stated plainly so nobody mistakes silence for coverage.
 - **Anything against live Forio.** The Forio driver has no tests; it is exercised
   only by `record-golden.js`, by hand. Everything we know about its behaviour is
   frozen in the trace.
-- **Array formulas** are refused at load time, not supported.
+- **Array formulas spanning several cells** are refused at load time, not supported.
+  Single-cell ones (how modern Excel saves ordinary formulas) load as plain formulas.
+- **Named ranges HyperFormula refuses** (shaped like a cell address, e.g. `EcPro7`)
+  are not registered with the engine; read and write still reach them. A formula
+  that mentions one fails the load.
+- **Matching Forio's rounding.** `excelFunctions.js` (`ROUND`) and the driver's
+  `smartRounding` handling were checked by hand against a live Forio run of
+  `rounding.xlsx`, not by the suite.
 - **The "shared formula ExcelJS could not resolve" branch** in `workbook.js`. ExcelJS
   writes the formula into every cell of a shared group, so the branch does not
   appear to be reachable — it is a guard against a case we could not construct.

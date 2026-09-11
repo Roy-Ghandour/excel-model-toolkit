@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { HyperFormula } from "hyperformula";
+import "./excelFunctions.js";
 import { readWorkbook } from "./workbook.js";
 import { assertWritable } from "../common.js";
 
@@ -12,8 +13,54 @@ import { assertWritable } from "../common.js";
  *
  * `licenseKey: 'gpl-v3'` selects HyperFormula's open-source licence, as the library
  * requires an explicit choice. This is the only free choice and requires the programme be open source
+ *
+ * `smartRounding` switches on two separate things, and Forio does only the first:
+ * - comparisons and sums tolerate the last bits of a double, so `0.1+0.2=0.3` is
+ *   TRUE and `0.1+0.2-0.3` is 0. The engine fixes this when it is built.
+ * - every value read back is rounded to 10 significant digits. Forio returns the
+ *   full double.
+ * So engines are built with it on and it is switched off straight after, in
+ * `buildEngine` — the only way to get the first without the second.
  */
-const ENGINE_OPTIONS = { licenseKey: "gpl-v3", smartRounding: false };
+const ENGINE_OPTIONS = { licenseKey: "gpl-v3", smartRounding: true };
+
+/**
+ * The named ranges to register with the engine, as `[name, shape]` pairs.
+ *
+ * HyperFormula refuses any name shaped like a cell address — letters then digits,
+ * e.g. `EcPro7` — even where Excel allows it because the "column" is past `XFD`.
+ * Reading and writing never need the engine to know a name: both go through
+ * `schema` and address the cell directly. Only a formula that mentions the name
+ * does, so skip a refused name unless one does, and throw in that case rather than
+ * let it evaluate to `#NAME?`.
+ */
+function registrableNames(workbook) {
+  const probe = HyperFormula.buildEmpty(ENGINE_OPTIONS);
+  const refused = [...workbook.names.keys()].filter(
+    (name) => !probe.isItPossibleToAddNamedExpression(name, "=0")
+  );
+  if (refused.length === 0) return [...workbook.names];
+
+  // Every word in every formula, gathered in one pass: a regex per name costs
+  // seconds on a large model. Excel names are case-insensitive, and a word followed
+  // by `(` or `!` is a function or a sheet, not a name.
+  const formulaOf = ({ sheet, row, col }) => workbook.sheets[sheet][row][col];
+  const allFormulas = workbook.formulaCells.map(formulaOf).join("\n");
+  const words = new Set();
+  for (const [word] of allFormulas.matchAll(/[\w.]+(?![\w.(!])/g)) {
+    words.add(word.toLowerCase());
+  }
+
+  const used = refused.find((name) => words.has(name.toLowerCase()));
+  if (used) {
+    const mention = new RegExp(`(?<![\\w.])${used}(?![\\w.(!])`, "i");
+    const cell = workbook.formulaCells.find((c) => mention.test(formulaOf(c)));
+    throw new Error(
+      `${workbook.modelFile}: ${cell.sheet}!${cell.ref} uses named range '${used}', which HyperFormula cannot register because it is shaped like a cell address`
+    );
+  }
+  return [...workbook.names].filter(([name]) => !refused.includes(name));
+}
 
 /**
  * Connect to a model file and return a driver bound to it.
@@ -26,6 +73,7 @@ const ENGINE_OPTIONS = { licenseKey: "gpl-v3", smartRounding: false };
 export async function createLocalDriver({ modelPath }) {
   const workbook = await readWorkbook(modelPath);
   const schema = workbook.names;
+  const engineNames = registrableNames(workbook);
 
   /** Build a fresh engine at the workbook's authored state. */
   function buildEngine() {
@@ -33,8 +81,12 @@ export async function createLocalDriver({ modelPath }) {
       workbook.sheets,
       ENGINE_OPTIONS
     );
-    // Feed the engine the named ranges from the sheet
-    for (const [name, { range }] of workbook.names) {
+
+    // Keep smartRounding's comparison tolerance, drop its output rounding (see ENGINE_OPTIONS).
+    engine._config.smartRounding = false;
+
+    // Feed the engine the named ranges its formulas can refer to
+    for (const [name, { range }] of engineNames) {
       engine.addNamedExpression(name, `=${range}`);
     }
     return engine;

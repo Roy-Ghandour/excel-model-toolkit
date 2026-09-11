@@ -1,8 +1,9 @@
 import { execute } from "../tools/execute.js";
+import { test } from "../tools/test.js";
 
 /**
  * Every tool `modelkit` can run.
  *
  * @type {import('./dispatch.js').Tool[]}
  */
-export const tools = [execute];
+export const tools = [execute, test];

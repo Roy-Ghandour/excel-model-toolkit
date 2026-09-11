@@ -1,13 +1,16 @@
 import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
 import { loadRunFile } from "../core/runFile.js";
 import { replay } from "../core/replay.js";
+import { assertSimulation } from "../core/simulation.js";
 import { createForioDriver } from "../drivers/forio/forioDriver.js";
 import { createLocalDriver } from "../drivers/local/localDriver.js";
 
 /** Testbed: execute a run file locally and on Forio, and compare every named range at every step. */
 
-const MODEL_FILE = "AIGovModel.xlsx";
+/** The model on disk. Forio knows it by its basename. */
+const MODEL_PATH = "models/AIGovModel.xlsx";
+const MODEL_FILE = basename(MODEL_PATH);
 
 /** `{ account, project }` of the Forio project to run against. Credentials come from `.env`. */
 const FORIO_TARGET = "forio.json";
@@ -97,9 +100,10 @@ export const testFull = {
     // Loaded outside `timedReplay` because its names drive both sides; timed here instead.
     const loadStart = performance.now();
     const localDriver = await createLocalDriver({
-      modelPath: resolve(ctx.cwd, MODEL_FILE),
+      modelPath: resolve(ctx.cwd, MODEL_PATH),
     });
     const load = performance.now() - loadStart;
+    assertSimulation(localDriver, run);
     const names = [...localDriver.schema.keys()];
 
     const local = await timedReplay(() => localDriver, run, names);

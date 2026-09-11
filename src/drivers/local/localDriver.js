@@ -140,6 +140,15 @@ export async function createLocalDriver({ modelPath }) {
     schema,
 
     /**
+     * Read a single-cell named range's value as saved in the file. No calculation, so only
+     * meaningful for values typed into the cell.
+     */
+    readFromFile(name) {
+      const { sheet, row, col } = schema.get(name);
+      return workbook.sheets[sheet][row][col];
+    },
+
+    /**
      * Create a fresh run: a new engine at Step 0.
      *
      * The returned run owns its engine outright. Nothing here refers to it, so the

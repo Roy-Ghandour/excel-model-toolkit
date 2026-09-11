@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { loadRunFile } from "../core/runFile.js";
 import { replay } from "../core/replay.js";
+import { assertSimulation } from "../core/simulation.js";
 import { createLocalDriver } from "../drivers/local/localDriver.js";
 
 /** Execute a run file against a model and print what the model did. */
@@ -25,8 +26,8 @@ export const execute = {
     "Executes the decisions in a run file against a model, and prints each step's",
     "decisions followed by the full final state.",
     "",
-    "  modelkit execute runs/savings-golden.run.json test.xlsx",
-    "  modelkit execute runs/aigov-base.run.json AIGovModel.xlsx",
+    "  modelkit execute runs/savings-golden.run.json models/test.xlsx",
+    "  modelkit execute runs/aigov-base.run.json models/AIGovModel.xlsx",
   ].join("\n"),
 
   async run(args, ctx) {
@@ -40,6 +41,7 @@ export const execute = {
     const driver = await createLocalDriver({
       modelPath: resolve(ctx.cwd, modelFile),
     });
+    assertSimulation(driver, run);
 
     console.log(`run ${run.id} · ${driver.modelFile}`);
     if (run.label) console.log(run.label);

@@ -72,37 +72,34 @@ anything useful about running one set of decisions against two model versions.
 
 ---
 
-## Run file `simulation` is written but read by nothing
+## Run file `simulation` picks no ruleset yet
 
-**Decided 2026-09-10. Not built.**
+**Decided 2026-09-10. Identity check shipped 2026-09-11; legality not built.**
 
-`simulation` is **required** on every run file and is enforced by
-[`validate`](../src/core/runFile.js) — but nothing reads it yet, because the thing
-that would read it does not exist.
+`simulation` is **required** on every run file, enforced by
+[`validate`](../src/core/runFile.js), and **read** by each tool before it
+replays: a run file whose `simulation` differs from the model's `ModelKitID` named
+range, or a model with none, is refused
+([`simulation.js`](../src/core/simulation.js)). `ModelKitID` is read straight from
+the `.xlsx`, so the check costs no run, and `replay` knows nothing of it.
 
-It names the **ruleset a run is validated against**: the injected policy that
-decides whether a decision was affordable, whether a policy was unlocked that year,
-whether a slider was in range. Structural validation checks none of that today.
+What it does not do yet is pick a **ruleset**: the injected rules that decide
+whether a decision was affordable, whether a policy was unlocked that year,
+whether a slider was in range. None exist yet.
 
-**Why required rather than optional, given nothing reads it.** A run file that
-cannot say which rules apply to it can never be verified. If the field were
-optional, the day legality checking lands there would be a corpus of run files with
-no ruleset named — and it could not be retrofitted, because the information was
-never captured and is not recoverable from the decisions alone. Requiring it now
-costs one line per file and keeps every run ever written verifiable.
+**Why required from the first file.** A run file that cannot say which rules apply
+to it can never be verified, and the information is not recoverable from the
+decisions alone, so it could never be retrofitted onto an existing corpus.
 
-**Where it plugs in.** The first simulation policy. `simulation` becomes the
-dispatch key: `policy(run.simulation).validate(run) → { ok, violations[] }`, pure,
-no driver and no network. That same function is what makes a `--dry-run` possible
-(generate and check without touching a model) and what a compare tool would run
-against two model versions to report which decisions became illegal.
+**Where it plugs in.** Step 2 of the
+[run-validity design](superpowers/specs/2026-09-11-run-validity-design.md):
+`simulation` keys a rules registry, and legality is checked during replay against
+the model's live state. Not as a pure function of the JSON, because AI-Gov's rules
+depend on values the model computes.
 
-**Open: what value belongs here.** The example calls it `aigov`; the savings run
-files call it `savings`. The comment on the example describes it as the Epicenter
-project name, which for the live simulation would be `ai-governance`. Those are two
-different conventions — a short ruleset identifier, or a literal Epicenter project
-short name — and only one can be right. Settle it before more than a handful of run
-files exist, because changing it later means rewriting all of them.
+**Resolved: what value belongs here.** A short ruleset id modelkit owns (`aigov`,
+`savings`), not an Epicenter project short name, since the same model runs on more
+than one project.
 
 ---
 

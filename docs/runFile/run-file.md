@@ -48,10 +48,14 @@ _true_ about identity.
 
 ### Why `simulation` is required
 
-It is the only required field nothing currently reads, so the reason is worth
-stating. `simulation` names the **ruleset a run is validated against** — which
-policy decides whether a decision was affordable, whether a policy was unlocked
-that year, whether a slider was in range.
+`simulation` names the simulation a run is of, and so the **ruleset it is
+validated against** — which policy decides whether a decision was affordable,
+whether a policy was unlocked that year, whether a slider was in range.
+
+Every model declares the simulation it implements in a text named range,
+`ModelKitID`. Every tool refuses a run file whose `simulation` differs from the
+model's `ModelKitID`, or a model with none, before replaying it
+(`[src/core/simulation.js](../../src/core/simulation.js)`).
 
 A run file that cannot say which rules apply to it can never be verified. Making
 the field optional would mean that the day legality checking arrives, some existing

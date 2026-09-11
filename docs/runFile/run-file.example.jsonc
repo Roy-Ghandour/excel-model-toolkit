@@ -1,7 +1,6 @@
 // A run file, with every field it may carry.
 //
-// This is a reference, not a runnable file: `AIGovModel.xlsx` is not in this repo
-// JSON has no comments — so this is `.jsonc`.
+// This is a reference, not a runnable file: JSON has no comments, so this is `.jsonc`.
 
 {
   // REQUIRED - format version of the run file itself

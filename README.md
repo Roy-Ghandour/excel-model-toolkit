@@ -17,9 +17,11 @@ modelkit --version
 Executes a [run file](docs/runFile/run-file.md) against a model. It prints each step's decisions, then the full final state.
 
 ```sh
-modelkit execute runs/savings-golden.run.json test.xlsx
-modelkit execute runs/aigov-base.run.json AIGovModel.xlsx
+modelkit execute runs/savings-golden.run.json models/test.xlsx
+modelkit execute runs/aigov-base.run.json models/AIGovModel.xlsx
 ```
+
+The run file's `simulation` must match the model's `ModelKitID` named range, or the run is refused.
 
 ## Developing
 
@@ -27,7 +29,7 @@ You don't need a build to work on modelkit. This runs the same code from source:
 
 ```sh
 bun install
-bun run dev execute runs/savings-golden.run.json test.xlsx    # = modelkit execute ...
+bun run dev execute runs/savings-golden.run.json models/test.xlsx    # = modelkit execute ...
 bun test                                             # offline, see test/README.md
 ```
 

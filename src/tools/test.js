@@ -1,13 +1,16 @@
 import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
 import { loadRunFile } from "../core/runFile.js";
 import { replay } from "../core/replay.js";
+import { assertSimulation } from "../core/simulation.js";
 import { createForioDriver } from "../drivers/forio/forioDriver.js";
 import { createLocalDriver } from "../drivers/local/localDriver.js";
 
 /** Testbed: execute a run file locally and on Forio, and compare what each reports. */
 
-const MODEL_FILE = "AIGovModel.xlsx";
+/** The model on disk. Forio knows it by its basename. */
+const MODEL_PATH = "models/AIGovModel.xlsx";
+const MODEL_FILE = basename(MODEL_PATH);
 
 /** `{ account, project }` of the Forio project to run against. Credentials come from `.env`. */
 const FORIO_TARGET = "forio.json";
@@ -108,7 +111,13 @@ export const test = {
     );
 
     const local = await timedReplay(
-      () => createLocalDriver({ modelPath: resolve(ctx.cwd, MODEL_FILE) }),
+      async () => {
+        const driver = await createLocalDriver({
+          modelPath: resolve(ctx.cwd, MODEL_PATH),
+        });
+        assertSimulation(driver, run);
+        return driver;
+      },
       run
     );
     report("local", local);

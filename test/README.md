@@ -103,15 +103,16 @@ in a fixture next to the assertion about it, instead of opening a binary.
 ## Changing the model
 
 `test/model/test.xlsx` is the suite's own copy, and the one the golden trace was
-recorded against. It starts identical to the copy at the repo root; keeping them
-so is manual, and only matters when the model itself is edited.
+recorded against. It matches `models/test.xlsx` except that `models/test.xlsx`
+also carries the `ModelKitID` named range, which no test reads. Keeping the two
+in sync is manual, and only matters when the model itself is edited.
 
 If you do edit the model, the trace stops describing it, and every value in it has
 to be earned again:
 
 ```bash
 # 1. upload the new model to the Forio project (manual, via the Epicenter UI)
-# 2. copy it over both test/model/test.xlsx and the root test.xlsx
+# 2. copy it over both test/model/test.xlsx and models/test.xlsx
 bun run record-golden     # 3. talks to Forio, overwrites golden/test.xlsx.trace.json
 bun test                  # 4. everything should pass again
 ```

@@ -16,11 +16,9 @@ export const MODEL_FILE = 'test.xlsx';
 /**
  * Our own copy, beside this file rather than at the repo root.
  *
- * It is the same workbook the golden trace was recorded against. The root
- * `test.xlsx` is the one the run files under `runs/` name, so it is what
- * `modelkit simulate` picks up when run from the repo root; keeping the two in step
- * is manual, and only matters when the model itself is edited — at which point the
- * trace has to be re-recorded anyway.
+ * It is the same workbook the golden trace was recorded against. Keeping it in
+ * step with the root `test.xlsx` is manual, and only matters when the model itself
+ * is edited — at which point the trace has to be re-recorded anyway.
  */
 export const MODEL_PATH = new URL('./model/test.xlsx', import.meta.url);
 

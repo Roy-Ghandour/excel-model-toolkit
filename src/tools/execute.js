@@ -3,13 +3,7 @@ import { loadRunFile } from "../core/runFile.js";
 import { replay } from "../core/replay.js";
 import { createLocalDriver } from "../drivers/local/localDriver.js";
 
-/**
- * Run a run file and print what the model did.
- *
- * Everything about the run comes from the file: which model, what to write, and how
- * many steps to take. This tool only decides *how* to reach the model — it picks the
- * local driver — and how to render what came back.
- */
+/** Execute a run file against a model and print what the model did. */
 
 /** Render a read-back value: timelines as a list, single cells as themselves. */
 const show = (value) =>
@@ -22,32 +16,29 @@ const decisions = (writes) =>
     .join("  ");
 
 /** @type {import('../cli/dispatch.js').Tool} */
-export const simulate = {
-  name: "simulate",
-  summary: "Replay a run file against its model and print the trace",
+export const execute = {
+  name: "execute",
+  summary: "Execute a run file against a model and print the trace",
   usage: [
-    "usage: modelkit simulate <run-file.json>",
+    "usage: modelkit execute <run-file.json> <model.xlsx>",
     "",
-    "Replays the decisions in a run file against the model it names, and prints",
-    "each step's decisions followed by the full final state.",
+    "Executes the decisions in a run file against a model, and prints each step's",
+    "decisions followed by the full final state.",
     "",
-    "Both the run file and the model it names are resolved from the current",
-    "directory, so run from wherever the files are:",
-    "",
-    "  modelkit simulate runs/savings-golden.run.json",
-    "  cd ~/Downloads && modelkit simulate sweep-042.run.json",
+    "  modelkit execute runs/savings-golden.run.json test.xlsx",
+    "  modelkit execute runs/aigov-base.run.json AIGovModel.xlsx",
   ].join("\n"),
 
   async run(args, ctx) {
-    const [path] = args;
-    if (!path) {
-      console.error(simulate.usage);
+    const [path, modelFile] = args;
+    if (!path || !modelFile) {
+      console.error(execute.usage);
       return 1;
     }
 
     const run = await loadRunFile(resolve(ctx.cwd, path));
     const driver = await createLocalDriver({
-      modelPath: resolve(ctx.cwd, run.model.file),
+      modelPath: resolve(ctx.cwd, modelFile),
     });
 
     console.log(`run ${run.id} · ${driver.modelFile}`);
@@ -58,6 +49,7 @@ export const simulate = {
 
     console.log("\n  step   decisions");
     console.log("  ----   ---------");
+    if (trace.steps.length === 0) console.log("  (none - base state)");
     for (const taken of trace.steps) {
       console.log(
         `  ${String(taken.state.Step ?? taken.step + 1).padStart(

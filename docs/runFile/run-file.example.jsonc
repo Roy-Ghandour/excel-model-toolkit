@@ -20,9 +20,9 @@
   // REQUIRED - shortname for simulation, determines ruleset for validation
   "simulation": "aigov",
 
-  // REQUIRED - details of the model this run was generated against
+  // OPTIONAL - details of the model this run was generated against
   "model": {
-    // REQUIRED - the model file's name.
+    // OPTIONAL - the model file's name.
     "file": "AIGovModel.xlsx",
 
     // OPTIONAL - model version using semver

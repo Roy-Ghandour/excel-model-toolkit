@@ -1,7 +1,7 @@
 # The run file
 
 A **run file** is the complete description of one run's inputs, as portable JSON.
-It is the unit modelkit's tools trade in: a sweep emits many, `simulate` executes
+It is the unit modelkit's tools trade in: a sweep emits many, `execute` executes
 one, a compare tool feeds the same one to two model versions.
 
 One rule generates most of what follows: **a run file describes inputs, in the
@@ -30,14 +30,14 @@ every field, annotated. Read it first; this document is the contract behind it.
 | `label`         | no                                | string           | Free text. The human handle for a run worth keeping.                                  |
 | `createdAt`     | no                                | string           | ISO 8601 timestamp of generation. Provenance only.                                    |
 | `simulation`    | **yes**                           | string           | Which simulation this is a run of. Determines the ruleset a run is validated against. |
-| `model`         | **yes**                           | object           | What the run was generated against.                                                   |
-| `model.file`    | **yes**                           | string           | Model filename.                                                                       |
+| `model`         | no                                | object           | What the run was generated against.                                                   |
+| `model.file`    | no                                | string           | Model filename.                                                                       |
 | `model.version` | no                                | string           | Semver. Declared compatibility _intent_.                                              |
 | `model.sha256`  | no                                | string           | Exact identity of the model file. Provenance, not a constraint.                       |
 | `origin`        | no                                | object           | How the file came to exist. See [Origin](#origin).                                    |
 | `origin.tool`   | **yes**, when `origin` is present | string           | Which tool wrote the file.                                                            |
 | `settings`      | no                                | object           | Named ranges written once, before stepping.                                           |
-| `steps`         | **yes**                           | array of objects | Per-step named-range writes. Must be non-empty.                                       |
+| `steps`         | **yes**                           | array of objects | Per-step named-range writes. May be empty: the model's base state.                    |
 
 Optional fields are **absent rather than null**. Every value inside `settings` and
 `steps` must be a finite number.
@@ -76,7 +76,8 @@ for i in 0 .. steps.length-1:
 
 - **The array index is the step.** `steps[0]` is written at step 0. There is no
   separate step number to contradict the ordering.
-- `steps.length` **is the length of the run.** Nothing else declares it.
+- `steps.length` **is the length of the run.** Nothing else declares it. `[]` is a
+  run of length zero — the model exactly as authored, never stepped.
 - `settings` is written at step 0. Single-cell named ranges ignore the step
   outright; for a timeline, step 0 is the run's starting column — so one write
   covers both without special-casing.

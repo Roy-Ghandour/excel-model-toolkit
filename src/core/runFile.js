@@ -81,7 +81,7 @@ function checkWrites(writes, where) {
  * belongs here.
  *
  * @param {unknown} run The parsed JSON.
- * @returns {{ modelkit: number, simulation: string, model: { file: string, version?: string, sha256?: string }, id?: string, label?: string, createdAt?: string, origin?: { tool: string }, settings?: Record<string, number>, steps: Array<Record<string, number>> }}
+ * @returns {{ modelkit: number, simulation: string, model?: { file?: string, version?: string, sha256?: string }, id?: string, label?: string, createdAt?: string, origin?: { tool: string }, settings?: Record<string, number>, steps: Array<Record<string, number>> }}
  */
 export function validate(run) {
   if (run === null || typeof run !== "object" || Array.isArray(run)) {
@@ -94,25 +94,6 @@ export function validate(run) {
     throw new Error(
       `unsupported run file FORMAT_VERSION: expected "modelkit": ${FORMAT_VERSION}, received: ${describe(
         run.modelkit
-      )}`
-    );
-  }
-
-  if (
-    run.model === null ||
-    typeof run.model !== "object" ||
-    Array.isArray(run.model)
-  ) {
-    throw new Error(
-      `"model" must be an object describing the model, received: ${describe(
-        run.model
-      )}`
-    );
-  }
-  if (typeof run.model.file !== "string" || run.model.file === "") {
-    throw new Error(
-      `"model.file" must name the model file, received: ${describe(
-        run.model.file
       )}`
     );
   }
@@ -174,9 +155,7 @@ export function validate(run) {
       )}`
     );
   }
-  if (run.steps.length === 0) {
-    throw new Error('"steps" is empty, so the run has no steps to take');
-  }
+  // Empty is legal: the model's authored base state, untouched.
   run.steps.forEach((writes, step) => checkWrites(writes, `steps[${step}]`));
 
   return run;

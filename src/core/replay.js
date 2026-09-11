@@ -31,6 +31,7 @@ export function replay(driver, runFile) {
     namedRanges,
     initial,
     steps: taken,
-    final: taken.at(-1).state,
+    // No steps: the final state is whatever settings left behind.
+    final: taken.length ? taken.at(-1).state : run.read(namedRanges),
   };
 }

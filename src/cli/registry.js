@@ -1,8 +1,8 @@
-import { simulate } from "../tools/simulate.js";
+import { execute } from "../tools/execute.js";
 
 /**
  * Every tool `modelkit` can run.
  *
  * @type {import('./dispatch.js').Tool[]}
  */
-export const tools = [simulate];
+export const tools = [execute];

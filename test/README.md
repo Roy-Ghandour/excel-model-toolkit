@@ -16,7 +16,7 @@ test. Everything else it needs it owns: its own copy of the model file, its own
 constants, its own copy of the record/replay loop.
 
 That is deliberate. This project is days old and the scaffolding around the drivers
-— `src/config.js`, `src/tools/simulate.js`, where the model file lives — is
+— `src/config.js`, `src/tools/execute.js`, where the model file lives — is
 temporary and will be rearranged repeatedly. When that happens the suite should
 either keep working or fail for a real reason, never because a constant moved or a
 temporary module was deleted. Deleting `test/` removes the harness entirely and
@@ -103,10 +103,8 @@ in a fixture next to the assertion about it, instead of opening a binary.
 ## Changing the model
 
 `test/model/test.xlsx` is the suite's own copy, and the one the golden trace was
-recorded against. The copy at the repo root is the one the run files under
-[`runs/`](../runs/) name, so it is what `modelkit simulate` picks up when you run
-from the repo root. They start identical; keeping them so is manual, and only
-matters when the model itself is edited.
+recorded against. It starts identical to the copy at the repo root; keeping them
+so is manual, and only matters when the model itself is edited.
 
 If you do edit the model, the trace stops describing it, and every value in it has
 to be earned again:

@@ -12,16 +12,14 @@ modelkit help <tool>           # one tool's usage
 modelkit --version
 ```
 
-### `simulate`
+### `execute`
 
-Replays a [run file](docs/runFile/run-file.md) against the model it names. It
-prints each step's decisions, then the full final state.
+Executes a [run file](docs/runFile/run-file.md) against a model. It prints each step's decisions, then the full final state.
 
 ```sh
-modelkit simulate runs/savings-golden.run.json
+modelkit execute runs/savings-golden.run.json test.xlsx
+modelkit execute runs/aigov-base.run.json AIGovModel.xlsx
 ```
-
-The run file and the model file it names are both resolved from the current directory, so run it from wherever those files are.
 
 ## Developing
 
@@ -29,7 +27,7 @@ You don't need a build to work on modelkit. This runs the same code from source:
 
 ```sh
 bun install
-bun run dev simulate runs/savings-golden.run.json    # = modelkit simulate ...
+bun run dev execute runs/savings-golden.run.json test.xlsx    # = modelkit execute ...
 bun test                                             # offline, see test/README.md
 ```
 

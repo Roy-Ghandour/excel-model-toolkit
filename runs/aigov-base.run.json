@@ -1,0 +1,12 @@
+{
+  "modelkit": 1,
+
+  "label": "base case - no settings, no steps, the model exactly as authored",
+  "simulation": "aigov",
+
+  "model": {
+    "file": "AIGovModel.xlsx"
+  },
+
+  "steps": []
+}

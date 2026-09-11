@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -62,6 +62,9 @@ export function build({ target } = {}) {
 if (import.meta.main) {
   const all = process.argv.includes("--all");
   const targets = all ? TARGETS : [undefined];
+
+  // Clear folder
+  rmSync(DIST, { recursive: true, force: true });
   for (const target of targets) build({ target });
   const count = targets.length;
   console.log(

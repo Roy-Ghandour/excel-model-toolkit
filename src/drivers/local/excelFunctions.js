@@ -1,13 +1,13 @@
-import { HyperFormula } from "hyperformula";
+import { CellError, ErrorType, HyperFormula } from "hyperformula";
 
 /**
  * Forio's behaviour, for the built-in functions where HyperFormula's differs.
  *
- * Forio computes as Excel does, and Excel deliberately looks at a number the way it
- * displays it — 15 significant digits — in places where HyperFormula uses the raw
- * double. Each function here reproduces one of those, and exists because a probe
- * against Forio showed the difference (`rounding.xlsx`). Add the next the same way,
- * not speculatively.
+ * Mostly Forio computes as Excel does, and Excel deliberately looks at a number the
+ * way it displays it — 15 significant digits — in places where HyperFormula uses the
+ * raw double. Where Forio's own engine departs from Excel, we follow Forio: parity
+ * with the runtime is the point. Each function here exists because a probe against
+ * Forio showed the difference. Add the next the same way, not speculatively.
  *
  * Registration is global to HyperFormula, so it happens once, on import, and every
  * engine in the process gets it.
@@ -48,3 +48,45 @@ class ExcelRoundingPlugin extends RoundingPlugin {
 
 HyperFormula.unregisterFunction("ROUND");
 HyperFormula.registerFunction("ROUND", ExcelRoundingPlugin);
+
+/** The values `AVERAGE` counts, as HyperFormula decides: numbers (plain or formatted) and errors. */
+const strictlyNumbers = (value) =>
+  typeof value === "number" ||
+  typeof value?.val === "number" ||
+  value instanceof CellError
+    ? value
+    : undefined;
+
+const AggregationPlugin = HyperFormula.getFunctionPlugin("AVERAGE");
+
+/**
+ * `AVERAGE` as Forio computes it: a running mean, `m += (x - m) / k`, where Excel
+ * and HyperFormula take `sum / n`. The two differ in the last bit; this reproduces
+ * Forio's EconomyScore on AIGovModel in all 9 years where `sum / n` managed 2.
+ *
+ * Arguments are gathered one at a time because the mean depends on their order, and
+ * HyperFormula's `reduce` puts a range's values ahead of the arguments before it.
+ */
+class ForioAveragePlugin extends AggregationPlugin {
+  average(ast, state) {
+    const values = [];
+    for (const arg of ast.args) {
+      const got = this.reduce(
+        [arg],
+        state,
+        [],
+        "FORIO_AVERAGE",
+        (left, right) => left.concat(right),
+        (value) => [typeof value === "number" ? value : value.val],
+        strictlyNumbers
+      );
+      if (got instanceof CellError) return got;
+      values.push(...got);
+    }
+    if (values.length === 0) return new CellError(ErrorType.DIV_BY_ZERO);
+    return values.reduce((mean, x, i) => mean + (x - mean) / (i + 1), 0);
+  }
+}
+
+HyperFormula.unregisterFunction("AVERAGE");
+HyperFormula.registerFunction("AVERAGE", ForioAveragePlugin);

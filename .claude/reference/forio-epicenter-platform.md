@@ -229,6 +229,20 @@ getLocalSession(); setLocalSession(session); removeLocalSession();
 
 Common auth errors: `AUTHENTICATION_EXPIRED`, `AUTHENTICATION_BLOCKED`, `AUTHORIZATION_FAILURE`.
 
+**Verified live 2026-09-11 (`tr/temp-project`, private, team account):** an **Author**
+on the team logs in with project-scoped admin auth —
+`authAdapter.login({handle, password}, {objectType: 'admin'})`, i.e.
+`POST /{account}/{project}/authentication`. After that, `projectAdapter.get()` returns
+`projectKey` (the PROJECT scope key), and PROJECT-scoped `runAdapter.create` /
+`getVariables` / `updateVariables` / `operation('step')` / `remove` all work with the
+admin session (no `userKey`). This is what `src/drivers/forio/forioDriver.js` does.
+A wrong password returns `401 AUTHORIZATION_FAILURE` with type
+`FailedCredentialException` — the credential check itself, not a role problem.
+
+**Forio's Excel engine is not Excel (verified 2026-09-11):** `AVERAGE` is a running
+mean (`m += (x - m) / k`), not `sum / n`, so it can differ from Excel in the last bit.
+The local driver reproduces this in `src/drivers/local/excelFunctions.js`.
+
 > **Gap:** the docs excerpts don't give a copy-paste `AppCredentials` shape or an explicit anonymous-guest login call. Confirm the exact `AppCredentials` object (`secretKey` + likely account/project) against the in-package TS types. Our reference project instead uses admin `Router` auth (`objectType:'admin'`) — see the model-interaction doc §2.
 
 ---

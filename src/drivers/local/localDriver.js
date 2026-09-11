@@ -9,10 +9,13 @@ import { assertWritable } from "../common.js";
  */
 
 /**
- * Engine configuration. Both fields are load-bearing.
+ * Engine configuration. Every field is load-bearing.
  *
  * `licenseKey: 'gpl-v3'` selects HyperFormula's open-source licence, as the library
  * requires an explicit choice. This is the only free choice and requires the programme be open source
+ *
+ * `evaluateNullToZero` makes a formula that points at an empty cell (`=K110`) read 0,
+ * as Excel and Forio do; HyperFormula otherwise returns null. Empty cells stay null.
  *
  * `smartRounding` switches on two separate things, and Forio does only the first:
  * - comparisons and sums tolerate the last bits of a double, so `0.1+0.2=0.3` is
@@ -22,7 +25,11 @@ import { assertWritable } from "../common.js";
  * So engines are built with it on and it is switched off straight after, in
  * `buildEngine` — the only way to get the first without the second.
  */
-const ENGINE_OPTIONS = { licenseKey: "gpl-v3", smartRounding: true };
+const ENGINE_OPTIONS = {
+  licenseKey: "gpl-v3",
+  smartRounding: true,
+  evaluateNullToZero: true,
+};
 
 /**
  * The named ranges to register with the engine, as `[name, shape]` pairs.

@@ -1,12 +1,12 @@
 # The test suite
 
 ```bash
-npm test              # 22 tests, ~1.5s, entirely offline
+bun test              # 22 tests, ~1.5s, entirely offline
 ```
 
-Everything here runs against the local driver. Nothing in `npm test` touches the
+Everything here runs against the local driver. Nothing in `bun test` touches the
 network, needs a Forio account, or needs an internet connection. One file —
-`record-golden.js` — does talk to Forio, and it is never run by `npm test`.
+`record-golden.js` — does talk to Forio, and it is never run by `bun test`.
 
 ## It stands alone
 
@@ -45,7 +45,7 @@ sheet resolving correctly — are pinned directly.
 
 ## The files
 
-| File | Runs in `npm test` | What it proves |
+| File | Runs in `bun test` | What it proves |
 | --- | --- | --- |
 | `excel-oracle.test.js` | yes | our engine agrees with Excel itself |
 | `forio-conformance.test.js` | yes | the driver reproduces a real Epicenter run |
@@ -103,9 +103,10 @@ in a fixture next to the assertion about it, instead of opening a binary.
 ## Changing the model
 
 `test/model/test.xlsx` is the suite's own copy, and the one the golden trace was
-recorded against. The copy at the repo root is what the temporary `simulate` tool
-reads. They start identical; keeping them so is manual, and only matters when the
-model itself is edited.
+recorded against. The copy at the repo root is the one the run files under
+[`runs/`](../runs/) name, so it is what `modelkit simulate` picks up when you run
+from the repo root. They start identical; keeping them so is manual, and only
+matters when the model itself is edited.
 
 If you do edit the model, the trace stops describing it, and every value in it has
 to be earned again:
@@ -113,8 +114,8 @@ to be earned again:
 ```bash
 # 1. upload the new model to the Forio project (manual, via the Epicenter UI)
 # 2. copy it over both test/model/test.xlsx and the root test.xlsx
-npm run record-golden     # 3. talks to Forio, overwrites golden/test.xlsx.trace.json
-npm test                  # 4. everything should pass again
+bun run record-golden     # 3. talks to Forio, overwrites golden/test.xlsx.trace.json
+bun test                  # 4. everything should pass again
 ```
 
 Upload **before** recording, or the recording describes a different model from the

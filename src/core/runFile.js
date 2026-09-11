@@ -186,6 +186,7 @@ export function validate(run) {
  * Read a run file from disk and hand back its content plus its id.
  *
  * @param {string | URL} path
+ * @returns {Promise<ReturnType<typeof validate> & { id: string }>}
  */
 export async function loadRunFile(path) {
   const source = await readFile(path, "utf8");

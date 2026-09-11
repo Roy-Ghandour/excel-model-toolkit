@@ -17,7 +17,8 @@ export const MODEL_FILE = 'test.xlsx';
  * Our own copy, beside this file rather than at the repo root.
  *
  * It is the same workbook the golden trace was recorded against. The root
- * `test.xlsx` is what the temporary `simulate` tool reads; keeping the two in step
+ * `test.xlsx` is the one the run files under `runs/` name, so it is what
+ * `modelkit simulate` picks up when run from the repo root; keeping the two in step
  * is manual, and only matters when the model itself is edited — at which point the
  * trace has to be re-recorded anyway.
  */
@@ -31,7 +32,7 @@ export const MAX_STEP = 12;
 
 /**
  * The Forio project the golden trace is recorded from. Read only by
- * `record-golden.js` — nothing in `npm test` touches the network.
+ * `record-golden.js` — nothing in `bun test` touches the network.
  * No secrets: the project is PUBLIC, so driving runs is anonymous.
  */
 export const FORIO = {

@@ -5,9 +5,10 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "node --test \"test/*.test.js\"",
-    "record-golden": "node test/record-golden.js",
-    "simulate": "node bin/simulate.js"
+    "test": "bun test",
+    "dev": "bun bin/modelkit.js",
+    "build": "bun scripts/build.js",
+    "record-golden": "bun test/record-golden.js"
   },
   "keywords": [],
   "author": "",

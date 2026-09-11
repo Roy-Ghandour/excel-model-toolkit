@@ -18,7 +18,7 @@ import { FORIO, GOLDEN_PATH, MAX_STEP, MODEL_FILE, REPORTED, TRANSACTION } from 
  * Re-record only when `test.xlsx` changes — which is manual and rare, since the tool
  * cares about exactly one model file at a time.
  *
- *     npm run record-golden
+ *     bun run record-golden
  */
 async function recordGolden() {
     const driver = await createForioDriver({ ...FORIO, modelFile: MODEL_FILE });

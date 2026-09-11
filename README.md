@@ -55,7 +55,7 @@ This installs to `~/.local/bin`. Use the file for your Mac: the Apple Silicon bu
 
 ```sh
 mkdir -p ~/.local/bin
-cp modelkit-bun-darwin-arm64 ~/.local/bin/modelkit
+cp dist/modelkit-bun-darwin-arm64 ~/.local/bin/modelkit
 chmod +x ~/.local/bin/modelkit
 ```
 

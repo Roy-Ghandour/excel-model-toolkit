@@ -83,9 +83,10 @@ range, or a model with none, is refused
 ([`simulation.js`](../src/core/simulation.js)). `ModelKitID` is read straight from
 the `.xlsx`, so the check costs no run, and `replay` knows nothing of it.
 
-What it does not do yet is pick a **ruleset**: the injected rules that decide
-whether a decision was affordable, whether a policy was unlocked that year,
-whether a slider was in range. None exist yet.
+Since 2026-09-12 it also picks the **ruleset** a run is checked against, through
+[`simulations/registry.js`](../src/simulations/registry.js). Only one rule exists
+so far — AI-Gov's sliders must be a whole number from 0 to 3 — so affordability,
+policy availability and the rest are still to come.
 
 **Why required from the first file.** A run file that cannot say which rules apply
 to it can never be verified, and the information is not recoverable from the

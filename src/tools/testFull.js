@@ -3,6 +3,8 @@ import { basename, resolve } from "node:path";
 import { loadRunFile } from "../core/runFile.js";
 import { replay } from "../core/replay.js";
 import { assertSimulation } from "../core/simulation.js";
+import { assertValid } from "../core/violations.js";
+import { rulesFor } from "../simulations/registry.js";
 import { createForioDriver } from "../drivers/forio/forioDriver.js";
 import { createLocalDriver } from "../drivers/local/localDriver.js";
 
@@ -30,12 +32,15 @@ const decisions = (writes) =>
 
 const seconds = (ms) => `${(ms / 1000).toFixed(2)}s`;
 
-/** Connect a driver and replay the run through it, reading `names` at every state. */
-async function timedReplay(connect, run, names) {
+/**
+ * Connect a driver and drive the run through it, timing both halves.
+ * `drive` differs because only the local side validates.
+ */
+async function timedReplay(connect, drive) {
   const start = performance.now();
   const driver = await connect();
   const connected = performance.now();
-  const trace = await replay(driver, run, names);
+  const trace = await drive(driver);
   const end = performance.now();
   return {
     trace,
@@ -106,7 +111,13 @@ export const testFull = {
     assertSimulation(localDriver, run);
     const names = [...localDriver.schema.keys()];
 
-    const local = await timedReplay(() => localDriver, run, names);
+    const local = await timedReplay(
+      () => localDriver,
+      (driver) => replay(driver, run, { rules: rulesFor(run.simulation) })
+    );
+    assertValid(local.trace.violations);
+
+    // Forio replays what the local side has already found legal.
     const forio = await timedReplay(
       () =>
         createForioDriver({
@@ -114,8 +125,7 @@ export const testFull = {
           modelFile: MODEL_FILE,
           credentials: { handle, password },
         }),
-      run,
-      names
+      (driver) => replay(driver, run, { names })
     );
 
     console.log(

@@ -156,13 +156,16 @@ It deliberately does **not** check:
   model's schema and refuses an unknown name before writing anything.
 - **Whether the run is _legal_.** Whether a decision was affordable, whether a
   policy was unlocked that year, whether a slider was in range — all of that is
-  specific to a simulation's own rules and belongs in its injected policy. No
-  policy exists yet, so nothing checks legality today. Every run file still names
-  its `simulation`, so the runs written now stay checkable once one does.
+  specific to a simulation's own rules, which live in
+  `[src/simulations/](../../src/simulations/)` and are keyed by `simulation`.
 
 A structurally valid run file can therefore describe a run the simulation would
-consider nonsense. That is intentional: it is the compare tool's job to surface it,
-not the format's job to prevent it.
+consider nonsense. Legality is checked one layer up, as the run is driven: a rule
+can only be judged against what the model calculates, so checking a run and running
+it are one execution. `[replay](../../src/core/replay.js)` takes the simulation's
+rules and returns `violations` alongside the trace, and every tool refuses a run
+that has any, listing what it broke
+(`[assertValid](../../src/core/violations.js)`).
 
 ## Changing the format
 

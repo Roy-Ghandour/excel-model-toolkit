@@ -1,7 +1,9 @@
 import { resolve } from "node:path";
 import { loadRunFile } from "../core/runFile.js";
-import { replay } from "../core/replay.js";
 import { assertSimulation } from "../core/simulation.js";
+import { replay } from "../core/replay.js";
+import { assertValid } from "../core/violations.js";
+import { rulesFor } from "../simulations/registry.js";
 import { createLocalDriver } from "../drivers/local/localDriver.js";
 
 /** Execute a run file against a model and print what the model did. */
@@ -47,7 +49,10 @@ export const execute = {
     if (run.label) console.log(run.label);
     if (run.settings) console.log(`\nsettings   ${decisions(run.settings)}`);
 
-    const trace = await replay(driver, run);
+    const trace = await replay(driver, run, {
+      rules: rulesFor(run.simulation),
+    });
+    assertValid(trace.violations);
 
     console.log("\n  step   decisions");
     console.log("  ----   ---------");

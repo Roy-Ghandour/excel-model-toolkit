@@ -25,8 +25,10 @@ hostile — you would have to compute a sha256 before your edit would load — a
 hand-editability is a property of this format worth protecting. A warning surfaces
 the problem without standing in the way.
 
-**Why deferred.** Nothing generates run files yet, so no stored id can be stale
-today. The risk this guards against does not exist until the sweep lands.
+**Why deferred.** It was deferred because nothing generated run files. That changed
+on 2026-09-13: [`sample`](../src/tools/sample.js) writes files carrying a stored `id`,
+so a hand-edited one can now be stale and the risk this guards against is live. Still
+unbuilt; this is the next thing in this file to ship.
 
 **Where it plugs in.** [`loadRunFile`](../src/core/runFile.js) currently ends with:
 
@@ -45,15 +47,14 @@ after ids are in CSV exports, the recipe is frozen from that point.
 
 ## Run file fields defined but written by nothing
 
-**Decided 2026-09-10. Not built.**
+**Decided 2026-09-10. `createdAt` and `origin` shipped 2026-09-13 with
+[`sample`](../src/tools/sample.js); the two `model` fields not built.**
 
-Four optional fields are part of the run file contract and validated when present,
-but no code writes them today:
+Two optional fields remain part of the run file contract and validated when present,
+but written by no code today:
 
 | Field | Arrives with |
 |---|---|
-| `createdAt` | the sweep |
-| `origin` | the sweep (and any other generating tool) |
 | `model.version` | the compare tool |
 | `model.sha256` | the compare tool |
 
@@ -66,9 +67,8 @@ reasoning is fresh, is cheaper than re-litigating it per tool.
 example but never in a real file looks like a bug. It is not: nothing has had
 reason to write one yet.
 
-**Where they plug in.** The sweep writes `createdAt` and `origin` as it generates
-each file. The compare tool needs `model.version` and `model.sha256` to say
-anything useful about running one set of decisions against two model versions.
+**Where they plug in.** The compare tool needs `model.version` and `model.sha256` to
+say anything useful about running one set of decisions against two model versions.
 
 ---
 

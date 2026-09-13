@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 
 /** FORMAT_VERSION version this module reads. Bumped only when a change breaks old files. */
 export const FORMAT_VERSION = 1;
@@ -220,6 +220,46 @@ export function assertDeclaration(run, { minSteps, maxSteps, settings }) {
       }' (${list(settings)}) · ${problems.join(" · ")}`
     );
   }
+}
+
+/**
+ * Assemble a run file from decisions a tool just made.
+ *
+ * Field order is the order `run-file.md` lists them in, so a generated file reads
+ * the way the documented one does. The result goes through `validate` before it is
+ * returned: a tool that emits a file no tool can load is a bug worth catching here
+ * rather than on someone else's machine.
+ *
+ * @param {object} run
+ * @param {string} run.simulation The model's `ModelKitID`.
+ * @param {Record<string, number>} run.settings
+ * @param {Array<Record<string, number>>} run.steps
+ * @param {{ tool: string } & Record<string, unknown>} [run.origin] Provenance, never read back.
+ * @param {string} [run.label]
+ * @returns {ReturnType<typeof validate> & { id: string }}
+ */
+export function toRunFile({ simulation, settings, steps, origin, label }) {
+  return validate({
+    modelkit: FORMAT_VERSION,
+    id: runId(settings, steps),
+    ...(label === undefined ? {} : { label }),
+    createdAt: new Date().toISOString(),
+    simulation,
+    ...(origin === undefined ? {} : { origin }),
+    settings,
+    stepCount: steps.length,
+    steps,
+  });
+}
+
+/**
+ * Write a run file to disk, formatted the way a hand-written one is.
+ *
+ * @param {string | URL} path
+ * @param {ReturnType<typeof validate>} run
+ */
+export async function writeRunFile(path, run) {
+  await writeFile(path, `${JSON.stringify(run, null, 2)}\n`);
 }
 
 /**

@@ -17,11 +17,17 @@
  * `checkStep` is for everything that needs what the model computes. It is given
  * `length` as well, so a rule can be about the run as a whole and not only the step.
  *
+ * `checkStep` and `sample` are the same question from both ends — *given the state at
+ * step k, what is legal?* — so they belong to one object and are written together. A
+ * `sample` draws only from the legal set, which is why generation needs no
+ * draw-and-reject loop; `checkStep` stays on while it does, as an assertion.
+ *
  * @typedef {object} Rules
  * @property {number} minSteps Shortest legal run.
  * @property {number} maxSteps Longest legal run.
  * @property {string[]} settings Exactly the settings a run file must declare.
  * @property {(step: { step: number, length: number, writes: object, before: object, after: object }) => Array<{ name: string, reason: string }>} checkStep Returns a violation per illegal decision.
+ * @property {(step: number, state: object, rng: import('./rng.js').Rng) => Record<string, number>} [sample] Invents one step's writes. Absent, the simulation cannot be generated.
  */
 
 /**

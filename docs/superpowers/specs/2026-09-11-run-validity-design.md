@@ -87,9 +87,10 @@ There is no `validate` tool. Every tool that takes a run file passes the rules t
 | `execute` | its one run is the validating run |
 | `test`, `testFull` | the local side validates, and it already runs first, so an illegal run never reaches Forio |
 
-The same `simulate` serves the generators later: sampling and neighbour-mutation
-are `decide` functions, with `rules` on so what they produce is checked as it is
-made.
+The same `simulate` serves the generators: sampling and neighbour-mutation are
+`decide` functions, with `rules` on so what they produce is checked as it is made.
+[`generate`](../../../src/core/generate.js) is that, and is `replay`'s mirror — same
+loop, same rules, only the source of each step's decisions differs.
 
 ### A simulation's rules
 
@@ -103,7 +104,7 @@ interface's constraints.
 | `minSteps` / `maxSteps` | how long a run of it may be | shipped |
 | `settings` | exactly the settings a run file must declare | shipped |
 | `checkStep({ step, length, writes, before, after })` | → `{ name, reason }[]`. **Single source of truth.** | shipped |
-| `sample(step, state, rng)` | proposes a step's writes; still checked | step 3 |
+| `sample(step, state, rng)` | invents a step's writes, drawing only from the legal set; still checked | shipped |
 | `mutate` / `repair` | neighbour generation | step 4 |
 
 The first three are **static facts, checked from a run file alone** by
@@ -161,6 +162,29 @@ Two implementations exist:
   why a run is `NumYears + 1` steps. One consequence, measured and accepted: the setup
   turn spends a `step()`, so a finished run reports `GameOver` as 0 while every
   timeline is identical to a run without it.
+
+### Sampling costs nothing extra
+
+A generator could draw a run, check it, and throw it away when it broke a rule. That
+would be wasteful and, worse, would make the cost of a run unpredictable — as spending
+approaches a model's limits the rejection rate climbs without bound.
+
+It is also unnecessary, because **every constraint is settled before the step it
+governs**. `checkStep` reads `before`, and so can `sample`: whether a policy is on
+screen, whether it may be cancelled, which dilemma belongs to this year, which
+ministries are in play. AI-Gov's budget looked like the exception — `BudgetRemaining`
+is a formula over the column just written — but the model also publishes
+`<M>AvaialbleToAllocate`, the same arithmetic one step earlier. Details and the exact
+identity are in [the catalogue](../../simulations/aigov.md#generating-a-run).
+
+So `sample` draws from the legal set rather than from all sets, one pass produces one
+valid run, and `rules` stays on while it does — not as a filter but as an
+**assertion**. A violation during generation means the sampler is wrong, not that the
+draw was unlucky, and `generate` hands violations back as data so the tool can say so.
+
+The general shape this leaves for any future simulation: if a rule cannot be decided
+from `before`, either the model already publishes the same quantity a step earlier, or
+that rule genuinely needs a redraw. AI-Gov needed no redraws.
 
 ### Neighbours cascade
 
@@ -220,7 +244,12 @@ the check costs nothing and `simulate` stays free of it.
    settles what a step *means* for AI-Gov (step 0 is setup), and moves printed step
    numbers to 0-based so the run-file index, the model column and the violation all
    agree.
-3. **Sample.** Random valid runs: a `sample` that feeds `decide`.
+3. **Sample.** ✅ 2026-09-13. `sample` feeds `decide` through
+   [generate.js](../../../src/core/generate.js), with a seeded
+   [rng](../../../src/core/rng.js) and the [`sample` tool](../../../src/tools/sample.js).
+   **One pass, no draw-and-reject**: every constraint is readable from the pre-step
+   state, so the sampler draws only from the legal set and `checkStep` rides along as
+   an assertion. See [Sampling costs nothing extra](#sampling-costs-nothing-extra).
 4. **Neighbours.** `mutate` and reject-or-repair, with the optimiser.
 
 ## Open, resolved when their step arrives

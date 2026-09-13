@@ -23,6 +23,23 @@ modelkit execute runs/aigov-base.run.json models/AIGovModel.xlsx
 
 The run file's `simulation` must match the model's `ModelKitID` named range, or the run is refused.
 
+### `sample`
+
+Plays a model at random and writes the result as a [run file](docs/runFile/run-file.md). It only ever chooses what the simulation's own rules allow, so what comes out is valid the first time — there is no generate-and-retry.
+
+```sh
+modelkit sample models/AIGovModel.xlsx runs/aigov.settings.json --steps 6 --seed 1
+modelkit sample models/AIGovModel.xlsx runs/aigov.settings.json --steps 6 --out runs/random.run.json
+```
+
+| Flag | Meaning |
+|---|---|
+| `--steps` | how many steps to generate, including the simulation's own setup turn |
+| `--seed` | number or text. The same seed and model reproduce the same run |
+| `--out` | write the run file here instead of stdout |
+
+The settings file is a plain JSON map of named range to number, and must declare exactly the settings its simulation names. A model whose simulation has no sampler — `models/test.xlsx` — is refused.
+
 ## Developing
 
 You don't need a build to work on modelkit. This runs the same code from source:

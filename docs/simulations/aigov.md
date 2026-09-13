@@ -1,9 +1,11 @@
 # AI-Governance — the rules modelkit enforces
 
 What `[src/simulations/aigov.js](../../src/simulations/aigov.js)` checks, why each
-rule exists, and what in the model or the live sim establishes it. The general design
-is in `[the run-validity spec](../superpowers/specs/2026-09-11-run-validity-design.md)`;
-this is the catalogue.
+rule exists, and what in the model or the live sim establishes it — then
+[how it plays the same rules forwards](#generating-a-run) to produce a random run. The
+general design is in
+`[the run-validity spec](../superpowers/specs/2026-09-11-run-validity-design.md)`; this
+is the catalogue.
 
 The governing standard: **a run must be one a player could have made.** Not merely
 one the spreadsheet will compute a number for — the spreadsheet will compute a number
@@ -131,6 +133,63 @@ leftovers, Economy only.
   policy on another. The budget is the only limit.
 - **Pace.** `Step` advances one at a time and the facilitator can cap how far a
   session runs. That is session state, not a model rule.
+
+## Generating a run
+
+`aigov.sample` is the ruleset read forwards: instead of asking whether a decision was
+legal, it asks what the legal decisions are and picks among them. Everything it needs
+is in `before` — the state after the previous step — so **it never has to redraw**.
+
+| Step | What it writes |
+|---|---|
+| 0 | a shuffled ranking of the six values |
+| 1…NumYears | per enabled ministry, both sliders and any policy it changes; then the year's dilemma |
+
+Only *changes* are written. A policy left alone carries forward on the model's own
+`=prev`, and re-writing `1` over an active one costs nothing and records nothing.
+Sliders are the opposite case — no carry chain, so an unwritten slider is level 0 and
+each year has to state its own level.
+
+### The budget, without re-implementing the budget
+
+`BudgetRemaining` is a formula over the column just written, so it cannot be consulted
+before deciding. But the model publishes the same arithmetic one step earlier:
+
+```
+pot   = before[<M>AvaialbleToAllocate][step]        Budget − RecurringCost
+pot  += <id>CostRecurringValue     per policy cancelled this turn
+spend = Σ SliderCosts[level]  +  Σ (<id>Type = 1 ? <id>CostValue : 1)   per new selection
+```
+
+In `before`, column *step* still holds its carry formulas, so `AvaialbleToAllocate`
+reads as **the money left if every active policy is kept** — precisely the pot a player
+starts the year with. And since `BudgetRemaining = Budget − (InitialCost + Recurring)`
+while `InitialCost` is exactly sliders plus new selections, `spend ≤ pot` **is**
+`BudgetRemaining ≥ 0` — the same inequality, not an approximation of it. Measured over
+40 generated runs the tightest ministry-year lands at `BudgetRemaining` of exactly 0,
+and none goes negative.
+
+Two details the formulas make load-bearing:
+
+- **`Type` gates the price.** `Cost = IF(Type=1, (dec−Show)×CostValue, dec−Show)`, so a
+  policy with `Type ≠ 1` costs 1, not its `CostValue`.
+- **Cancelling frees money this year.** `CostRecurring = IF(AND(Show=1, dec=1), …)`, so
+  dropping an active policy stops its charge in the very column being written.
+  Conversely a policy *selected* this year has `Show = 0` and is not charged recurring
+  until next year.
+
+`SliderCosts` (`'KPI Impacts'!$T$63:$W$63`, all eight sliders share it) is a named range
+added for this, so the cost table is read from the model rather than copied into JS.
+
+### Why one pass always succeeds
+
+Within a ministry the sampler shuffles its two sliders together with every available
+policy and walks the list once, choosing from whatever the remaining pot affords.
+Shuffling is what keeps any one item from having a standing claim on the budget.
+
+The walk cannot get stuck because **every item's cheapest option is free** — slider
+level 0 costs 0, and a policy can always be left alone. However little is left, a legal
+choice remains, which is the structural reason no draw is ever wasted.
 
 ## Still open
 

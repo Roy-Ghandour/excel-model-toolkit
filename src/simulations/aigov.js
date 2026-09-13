@@ -1,9 +1,11 @@
 /**
- * The rules of the AI-Governance simulation.
+ * The rules of the AI-Governance simulation, and how to play it at random.
  *
  * The only place in modelkit that knows what an AI-Gov named range means. Rules are
  * the simulation's own, as its interface enforces them — a run that breaks one is a
- * run no player could have made.
+ * run no player could have made. `sample` is the same knowledge from the other end:
+ * it draws only from what a player could have chosen, so what it produces is valid
+ * without anything being redrawn.
  *
  * **A step is a model column.** Step 0 is the model's baseline column: it has no
  * budget (`EcBudget[0]` is 0), its policy rows are hard-coded, and the live sim never
@@ -29,6 +31,9 @@ const RANKING = /^Value([1-6])Position$/;
 
 /** The six values a player ranks, before the first year. */
 const RANKINGS = [1, 2, 3, 4, 5, 6].map((n) => `Value${n}Position`);
+
+/** The six dilemmas, one per year through `Op6Year` at column 6. */
+const DILEMMAS = [1, 2, 3, 4, 5, 6];
 
 /** A slider has four positions. */
 const legalSlider = (value) => Number.isInteger(value) && value >= 0 && value <= 3;
@@ -159,6 +164,91 @@ function checkYear({ step, writes, before, after }) {
   return violations;
 }
 
+/** The setup turn: a random ranking of the six values. */
+function sampleSetup(rng) {
+  const ranks = rng.shuffle([1, 2, 3, 4, 5, 6]);
+  return Object.fromEntries(RANKINGS.map((name, index) => [name, ranks[index]]));
+}
+
+/**
+ * One ministry's year, spent out of a budget the model has already worked out.
+ *
+ * `<M>AvaialbleToAllocate[step]` is `Budget − RecurringCost`, and in the pre-step
+ * state the column still holds its carry formulas — so it reads as *the money left
+ * if every active policy is kept*, which is exactly the pot a player starts the year
+ * with. The model's own `BudgetRemaining = Budget − (InitialCost + Recurring)` and
+ * `InitialCost` is precisely sliders plus new selections, so spending within this pot
+ * **is** `BudgetRemaining >= 0` rather than an estimate of it.
+ *
+ * Every item's cheapest option — slider level 0, a policy left alone — is free, so
+ * however little is left there is always a legal choice and the walk cannot get
+ * stuck. That is why one pass yields a valid year and nothing has to be redrawn.
+ */
+function sampleMinistry({ ministry, step, state, rng, writes }) {
+  let pot = state[`${ministry}AvaialbleToAllocate`][step];
+
+  const available = [];
+  for (let number = 3; number <= LAST_POLICY[ministry]; number++) {
+    const name = `${ministry}Pro${number}`;
+    const show = state[`${name}Show`][step];
+
+    if (show === 0) available.push(name);
+    // Cancelling is a player's move, and it stops next year's recurring charge, so
+    // the money it frees is spendable this year.
+    else if (show === 1 && state[`${name}CanCancel`] === 1 && rng.chance()) {
+      writes[name] = 0;
+      pot += state[`${name}CostRecurringValue`];
+    }
+  }
+
+  const sliders = [`${ministry}Slider1`, `${ministry}Slider2`];
+
+  // Shuffled so no item has a standing claim on the budget ahead of another.
+  for (const name of rng.shuffle([...sliders, ...available])) {
+    if (sliders.includes(name)) {
+      // Sliders do not carry forward, so each year states its own level. Position in
+      // `SliderCosts` is the level, as the cost XLOOKUP's key row is 0,1,2,3 in order.
+      const levels = state.SliderCosts.flatMap((cost, level) =>
+        cost <= pot ? [level] : []
+      );
+      const level = rng.pick(levels);
+      writes[name] = level;
+      pot -= state.SliderCosts[level];
+    } else {
+      const cost = state[`${name}Type`] === 1 ? state[`${name}CostValue`] : 1;
+      if (cost <= pot && rng.chance()) {
+        writes[name] = 1;
+        pot -= cost;
+      }
+    }
+  }
+}
+
+/**
+ * One year: each ministry's decisions, then that year's dilemma.
+ *
+ * Only what *changes* is written. An untouched policy carries forward on the model's
+ * own formula, and re-writing `1` over an active one costs nothing and says nothing.
+ */
+function sampleYear(step, state, rng) {
+  const writes = {};
+
+  for (const ministry of MINISTRIES) {
+    if (state[`${ministry}Enabled`] === 0) continue;
+    sampleMinistry({ ministry, step, state, rng, writes });
+  }
+
+  // Both answers are answers — 0 latches the dilemma to −1, 1 to 1 — so a player
+  // always gives one.
+  for (const number of DILEMMAS) {
+    if (state[`Op${number}Year`][step] === 1) {
+      writes[`Op${number}Selected`] = rng.chance() ? 1 : 0;
+    }
+  }
+
+  return writes;
+}
+
 /** @type {import('../core/simulate.js').Rules} */
 export const aigov = {
   // The setup turn plus one turn per year, and the facilitator's slider allows 3 to 6 years.
@@ -184,5 +274,9 @@ export const aigov = {
     }
 
     return violations;
+  },
+
+  sample(step, state, rng) {
+    return step === 0 ? sampleSetup(rng) : sampleYear(step, state, rng);
   },
 };

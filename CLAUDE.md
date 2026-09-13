@@ -4,9 +4,10 @@ Headless test-suite / sweep tool for **Forio Epicenter Excel models**. Built
 specifically for the **AI-Governance** simulation first, behind dependency-injected
 seams so it can be re-pointed at another model later ("Doom runs on anything").
 
-**Status: planning.** No app code yet. The working document is [`plan.md`](plan.md) —
-read it before writing anything. Nothing else in this repo is source; it is all
-reference material and inherited docs.
+Source lives in [`src/`](src). The design documents that are still live are under
+[`docs/`](docs) — [the run-validity spec](docs/superpowers/specs/2026-09-11-run-validity-design.md)
+is the one that drives current work. `references/` and `docs/inherited/` are
+read-only reference material.
 
 ## Non-negotiable principles
 

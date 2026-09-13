@@ -42,21 +42,23 @@
     "seed": "20260910:7"
   },
 
-  // OPTIONAL - named ranges written once, before any stepping. Use for settings
-  // or welcome processes
+  // REQUIRED - named ranges written once, before any stepping. Exactly the settings
+  // the simulation declares, no more and no fewer, even where a value only restates
+  // the model's own. These five are aigov's.
   "settings": {
-    "NumYears": 4,
+    "NumYears": 3,
     "EcEnabled": 1,
     "EnvEnabled": 1,
     "DefEnabled": 1,
-    "EduEnabled": 1,
-    "_C1Enabled": 1,
-    "_C2Enabled": 0,
-    "AIFeedbackEnabled": 0
+    "EduEnabled": 1
   },
 
+  // REQUIRED - how many steps this run has. Must equal `steps.length`, and must sit
+  // within the simulation's own minSteps..maxSteps. aigov is NumYears + 1 steps.
+  "stepCount": 4,
+
   // REQUIRED - the decisions, one object per step.
-  // The array index IS the step, so `steps.length` is the length of the run.
+  // The array index IS the step, so `steps.length` is what executes.
   "steps": [
     { "EcPro3New": 1, "EcPro7New": 1, "EnvPro2New": 1, "EcSlider": 0.4 },
     { "DefPro1New": 1, "EduPro5New": 1, "EcSlider": 0.55 },

@@ -1,13 +1,20 @@
 {
   "modelkit": 1,
 
-  "id": "dd891207bc59e44f",
+  "id": "ed43aa3f6634b88d",
   "label": "twelve deposits of 10 - mirrors test/golden/test.xlsx.trace.json",
   "simulation": "savings",
 
   "model": {
     "file": "test.xlsx"
   },
+
+  "settings": {
+    "initialBalance": 500,
+    "interestRate": 0.05
+  },
+
+  "stepCount": 12,
 
   "steps": [
     { "transactionAmount": 10 },

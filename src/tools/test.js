@@ -2,9 +2,8 @@ import { readFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import { loadRunFile } from "../core/runFile.js";
 import { replay } from "../core/replay.js";
-import { assertSimulation } from "../core/simulation.js";
+import { preflight } from "../core/simulation.js";
 import { assertValid } from "../core/violations.js";
-import { rulesFor } from "../simulations/registry.js";
 import { createForioDriver } from "../drivers/forio/forioDriver.js";
 import { createLocalDriver } from "../drivers/local/localDriver.js";
 
@@ -105,7 +104,7 @@ export const test = {
     const run = await loadRunFile(resolve(ctx.cwd, path));
     console.log(`run ${run.id} · ${MODEL_FILE}`);
     if (run.label) console.log(run.label);
-    if (run.settings) console.log(`\nsettings   ${decisions(run.settings)}`);
+    console.log(`\nsettings   ${decisions(run.settings)}`);
     console.log("\n  step   decisions");
     console.log("  ----   ---------");
     if (run.steps.length === 0) console.log("  (none - base state)");
@@ -114,14 +113,8 @@ export const test = {
     );
 
     const local = await timedReplay(
-      async () => {
-        const driver = await createLocalDriver({
-          modelPath: resolve(ctx.cwd, MODEL_PATH),
-        });
-        assertSimulation(driver, run);
-        return driver;
-      },
-      (driver) => replay(driver, run, { rules: rulesFor(run.simulation) })
+      () => createLocalDriver({ modelPath: resolve(ctx.cwd, MODEL_PATH) }),
+      (driver) => replay(driver, run, { rules: preflight(driver, run) })
     );
     assertValid(local.trace.violations);
     report("local", local);

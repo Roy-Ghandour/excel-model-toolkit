@@ -1,9 +1,8 @@
 import { resolve } from "node:path";
 import { loadRunFile } from "../core/runFile.js";
-import { assertSimulation } from "../core/simulation.js";
+import { preflight } from "../core/simulation.js";
 import { replay } from "../core/replay.js";
 import { assertValid } from "../core/violations.js";
-import { rulesFor } from "../simulations/registry.js";
 import { createLocalDriver } from "../drivers/local/localDriver.js";
 
 /** Execute a run file against a model and print what the model did. */
@@ -43,15 +42,13 @@ export const execute = {
     const driver = await createLocalDriver({
       modelPath: resolve(ctx.cwd, modelFile),
     });
-    assertSimulation(driver, run);
+    const rules = preflight(driver, run);
 
     console.log(`run ${run.id} · ${driver.modelFile}`);
     if (run.label) console.log(run.label);
-    if (run.settings) console.log(`\nsettings   ${decisions(run.settings)}`);
+    console.log(`\nsettings   ${decisions(run.settings)}`);
 
-    const trace = await replay(driver, run, {
-      rules: rulesFor(run.simulation),
-    });
+    const trace = await replay(driver, run, { rules });
     assertValid(trace.violations);
 
     console.log("\n  step   decisions");

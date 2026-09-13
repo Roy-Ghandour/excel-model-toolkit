@@ -87,11 +87,6 @@ There is no `validate` tool. Every tool that takes a run file passes the rules t
 | `execute` | its one run is the validating run |
 | `test`, `testFull` | the local side validates, and it already runs first, so an illegal run never reaches Forio |
 
-| Tool | How |
-|---|---|
-| `execute` | its one run is the validating run |
-| `test`, `testFull` | the local side validates, and it already runs first, so an illegal run never reaches Forio |
-
 The same `simulate` serves the generators later: sampling and neighbour-mutation
 are `decide` functions, with `rules` on so what they produce is checked as it is
 made.
@@ -105,10 +100,44 @@ interface's constraints.
 
 | Member | What it is | Status |
 |---|---|---|
-| `checkStep({ step, writes, before, after })` | → `{ name, reason }[]`. **Single source of truth.** | shipped |
-| `checkSettings(settings)` | rules for what is written before stepping | deferred, nothing needs it |
+| `minSteps` / `maxSteps` | how long a run of it may be | shipped |
+| `settings` | exactly the settings a run file must declare | shipped |
+| `checkStep({ step, length, writes, before, after })` | → `{ name, reason }[]`. **Single source of truth.** | shipped |
 | `sample(step, state, rng)` | proposes a step's writes; still checked | step 3 |
 | `mutate` / `repair` | neighbour generation | step 4 |
+
+The first three are **static facts, checked from a run file alone** by
+[`assertDeclaration`](../../../src/core/runFile.js) before any model is driven. The
+checking code is generic — it reads `minSteps`, `maxSteps` and `settings` off
+whatever object `rulesFor` returns and never learns a named range. `checkStep` is
+for everything that needs what the model computes; it is given `length` as well as
+the step, so a rule can be about the run as a whole.
+
+`settings` must match **exactly**: missing means the run silently inherited whatever
+the workbook was saved with, unexpected means a named range nobody vetted is
+reaching the model. This replaces the deferred `checkSettings` — a list of names
+turned out to be all the rules anyone needed for what is written before stepping.
+
+AI-Gov's length is not merely bounded, it is determined: a run is `NumYears + 1`
+steps. That is `checkStep`'s business rather than the declaration's, because
+`NumYears` is a setting the model reads — but it is caught at **step 0**, since the
+value is already in the model before the first decision.
+
+### One preflight
+
+Every check that can be made before a run is driven runs in
+[`preflight(driver, run)`](../../../src/core/simulation.js), in the order that
+reports the real problem first — the wrong model is a worse mismatch than the wrong
+shape:
+
+```
+assertSimulation(driver, run)     the file's simulation vs the model's ModelKitID
+rulesFor(run.simulation)          →  returned, so the tool passes it to replay
+assertDeclaration(run, rules)     stepCount in range, settings exactly declared
+```
+
+Separate functions, one ordered entry point. It is the only place the core reaches
+the rules registry, which keeps `simulate`, `replay` and `runFile` registry-free.
 
 A violation reads `step 2 · EcSlider1 · 5 is not a whole number from 0 to 3`.
 Validation collects every violation rather than stopping at the first: the model
@@ -117,12 +146,14 @@ worth checking.
 
 Two implementations exist:
 
-- **`savings`** (`models/test.xlsx`): no rules. A test workbook with no simulation
-  behind it, registered so that "no rules" is distinct from "simulation modelkit has
-  never heard of".
-- **`aigov`** (`models/AIGovModel.xlsx`): so far only that
-  `{Ec,Env,Def,Edu}Slider{1,2}` is a whole number from 0 to 3. The rest —
-  availability, budget, and what the interface enforces — is added with the lead dev.
+- **`savings`** (`models/test.xlsx`): 0 to 12 steps (its timelines are 13 columns
+  wide), `initialBalance` and `interestRate`, and no step rules. A test workbook with
+  no simulation behind it, registered so that "no rules" is distinct from "simulation
+  modelkit has never heard of".
+- **`aigov`** (`models/AIGovModel.xlsx`): 4 to 7 steps, five settings, and two step
+  rules — `{Ec,Env,Def,Edu}Slider{1,2}` is a whole number from 0 to 3, and the run is
+  `NumYears + 1` steps long. The rest — availability, budget, and what the interface
+  enforces — is added with the lead dev.
 
 ### Neighbours cascade
 
@@ -172,6 +203,11 @@ the check costs nothing and `simulate` stays free of it.
 2. **Validate.** ✅ 2026-09-12, minimally. `simulate` + `replay` with rules +
    `assertValid` + the rules registry, with AI-Gov's slider rule as the only rule. More AI-Gov rules follow,
    walked through with the lead dev rather than read out of the live sim alone.
+2.5. **Shape.** ✅ 2026-09-12. A run declares its own shape — `settings` and
+   `stepCount` required — and each simulation declares the shape it takes:
+   `minSteps`, `maxSteps`, `settings`. Checked by `assertDeclaration` inside
+   `preflight`, before any model is driven. AI-Gov's `NumYears + 1` length rule is in
+   `checkStep`.
 3. **Sample.** Random valid runs: a `sample` that feeds `decide`.
 4. **Neighbours.** `mutate` and reject-or-repair, with the optimiser.
 
@@ -179,5 +215,7 @@ the check costs nothing and `simulate` stays free of it.
 
 - Which AI-Gov constraints the model computes and which only the interface
   enforces. Settled rule by rule with the lead dev.
-- Whether `checkSettings` is needed, once a rule cares about what settings write.
+- Which settings AI-Gov's list should hold beyond `NumYears` and the four ministry
+  `*Enabled` switches. Nothing else matters yet; the rest of `defaultSimSettings`
+  is added as a rule starts depending on it.
 - Reject vs repair for neighbours (step 4).

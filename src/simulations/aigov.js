@@ -14,12 +14,31 @@ const legalSlider = (value) => Number.isInteger(value) && value >= 0 && value <=
 
 /** @type {import('../core/simulate.js').Rules} */
 export const aigov = {
-  checkStep({ writes }) {
-    return Object.entries(writes)
+  // A run is `NumYears + 1` steps, and the facilitator's slider allows 3 to 6 years.
+  minSteps: 4,
+  maxSteps: 7,
+
+  settings: ["NumYears", "EcEnabled", "EnvEnabled", "DefEnabled", "EduEnabled"],
+
+  checkStep({ step, length, writes, before }) {
+    const violations = Object.entries(writes)
       .filter(([name, value]) => SLIDER.test(name) && !legalSlider(value))
       .map(([name, value]) => ({
         name,
         reason: `${value} is not a whole number from 0 to 3`,
       }));
+
+    // `NumYears` is a single cell written with the settings, so its value is already
+    // known at the first step — no reason to replay the whole run to find this out.
+    if (step === 0 && before.NumYears + 1 !== length) {
+      violations.push({
+        name: "NumYears",
+        reason: `${before.NumYears} means a run of ${
+          before.NumYears + 1
+        } steps, but this run has ${length}`,
+      });
+    }
+
+    return violations;
   },
 };

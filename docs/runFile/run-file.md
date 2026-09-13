@@ -36,8 +36,9 @@ every field, annotated. Read it first; this document is the contract behind it.
 | `model.sha256`  | no                                | string           | Exact identity of the model file. Provenance, not a constraint.                       |
 | `origin`        | no                                | object           | How the file came to exist. See [Origin](#origin).                                    |
 | `origin.tool`   | **yes**, when `origin` is present | string           | Which tool wrote the file.                                                            |
-| `settings`      | no                                | object           | Named ranges written once, before stepping.                                           |
-| `steps`         | **yes**                           | array of objects | Per-step named-range writes. May be empty: the model's base state.                    |
+| `settings`      | **yes**                           | object           | Named ranges written once, before stepping. See [Why `settings` is exhaustive](#why-settings-is-exhaustive). |
+| `stepCount`     | **yes**                           | integer          | How many steps this run has. Must equal `steps.length`.                               |
+| `steps`         | **yes**                           | array of objects | Per-step named-range writes.                                                          |
 
 Optional fields are **absent rather than null**. Every value inside `settings` and
 `steps` must be a finite number.
@@ -68,6 +69,22 @@ A model with no rules worth enforcing still names one: the run files under
 `[runs/](../runs/)` declare `"simulation": "savings"` even though the savings
 workbook has no policy behind it yet.
 
+### Why `settings` is exhaustive
+
+A run file must declare **every** setting its simulation names, and no others —
+`[src/simulations/](../../src/simulations/)` holds the list, and a missing or
+unexpected name is refused.
+
+The point is that a run states the conditions it ran under instead of inheriting
+them. An omitted setting does not mean "default"; it means "whatever the `.xlsx` on
+disk happened to be saved with", which makes the run unreproducible the moment
+someone saves the workbook with a different value. A setting is therefore written
+out even when it only restates the model's authored value.
+
+An *unexpected* name is refused for the mirror reason: it is either a typo that
+silently wrote nothing meaningful, or a named range reaching the model that nobody
+declared a setting.
+
 ## Execution
 
 ```
@@ -80,8 +97,12 @@ for i in 0 .. steps.length-1:
 
 - **The array index is the step.** `steps[0]` is written at step 0. There is no
   separate step number to contradict the ordering.
-- `steps.length` **is the length of the run.** Nothing else declares it. `[]` is a
-  run of length zero — the model exactly as authored, never stepped.
+- `steps.length` **is what executes.** `stepCount` declares the same number
+  redundantly, so a file truncated in transit or edited by hand is caught before
+  anything runs, rather than replaying happily as a shorter run than anyone meant.
+  The two must match exactly.
+- **How long a run may be is the simulation's rule**, not the format's. Each
+  simulation declares `minSteps` and `maxSteps`, checked against `stepCount`.
 - `settings` is written at step 0. Single-cell named ranges ignore the step
   outright; for a timeline, step 0 is the run's starting column — so one write
   covers both without special-casing.
@@ -97,7 +118,9 @@ characters.
 This recipe is **pinned**. Once ids are written into files and CSV exports,
 changing what feeds the hash silently invalidates every id ever emitted.
 
-Excluded deliberately: `model`, `simulation`, `origin`, `label`, `createdAt`.
+Excluded deliberately: `model`, `simulation`, `origin`, `label`, `createdAt`, and
+`stepCount` — the last because it is redundant with `steps.length`, which is already
+in the hash, so including it would change the pinned recipe and buy nothing.
 
 - **Excluding** `model` **is the load-bearing choice.** The id names _the decisions_,
   so the same decisions carry one id across two model versions — which is what
@@ -145,27 +168,35 @@ Hand-written run files are not expected to carry `origin` at all.
 
 ## Validation
 
-`[src/core/runFile.js](../src/core/runFile.js)` checks **structure only**: that
-required fields are present and every field is the right shape and type. It fails
-on the first problem with the path to it, e.g.
+A run file is checked in three layers, cheapest first. The first two need no model
+at all, so a file that cannot possibly be right never starts a run.
+
+**1 · Structure** — `[validate](../../src/core/runFile.js)`. Required fields are
+present, every field is the right shape and type, and `stepCount` equals
+`steps.length`. Fails on the first problem with the path to it, e.g.
 `steps[3].transactionAmount must be a finite number, received: "10"`.
 
-It deliberately does **not** check:
+**2 · Declaration** — `[assertDeclaration](../../src/core/runFile.js)`. The file
+against the static facts its simulation declares about itself: `minSteps` /
+`maxSteps` bounding `stepCount`, and `settings` matching the simulation's list
+exactly. Generic code reading injected data — nothing here knows a named range.
+Unlike layer 1 it reports every missing and unexpected setting at once, because
+fixing five settings one error at a time is five pointless cycles.
 
-- **Whether the named ranges exist.** That is the driver's business — it knows the
-  model's schema and refuses an unknown name before writing anything.
-- **Whether the run is _legal_.** Whether a decision was affordable, whether a
-  policy was unlocked that year, whether a slider was in range — all of that is
-  specific to a simulation's own rules, which live in
-  `[src/simulations/](../../src/simulations/)` and are keyed by `simulation`.
+**3 · Legality** — the simulation's `checkStep`, as the run is driven. A rule can
+only be judged against what the model calculates, so checking a run and running it
+are one execution. `[replay](../../src/core/replay.js)` takes the simulation's rules
+and returns `violations` alongside the trace, and every tool refuses a run that has
+any, listing what it broke (`[assertValid](../../src/core/violations.js)`).
 
-A structurally valid run file can therefore describe a run the simulation would
-consider nonsense. Legality is checked one layer up, as the run is driven: a rule
-can only be judged against what the model calculates, so checking a run and running
-it are one execution. `[replay](../../src/core/replay.js)` takes the simulation's
-rules and returns `violations` alongside the trace, and every tool refuses a run
-that has any, listing what it broke
-(`[assertValid](../../src/core/violations.js)`).
+Layers 1 and 2 run together in
+`[preflight](../../src/core/simulation.js)`, which also matches the file's
+`simulation` against the model's `ModelKitID` and hands the tool the rules for
+layer 3. It is the one place the core reaches the simulations registry.
+
+Validation deliberately does **not** check **whether the named ranges exist**. That
+is the driver's business — it knows the model's schema and refuses an unknown name
+before writing anything.
 
 ## Changing the format
 

@@ -1,3 +1,6 @@
+import { assertDeclaration } from "./runFile.js";
+import { rulesFor } from "../simulations/registry.js";
+
 /** Named range every model carries, holding the id of the simulation it implements. */
 export const SIMULATION_ID = "ModelKitID";
 
@@ -21,4 +24,22 @@ export function assertSimulation(driver, runFile) {
       `run file is a run of '${runFile.simulation}' but ${driver.modelFile} implements '${simulation}'`
     );
   }
+}
+
+/**
+ * Every check that can be made before a run is driven, in the order that reports
+ * the real problem first: the wrong model is a worse mismatch than the wrong shape.
+ *
+ * The one place the core reaches the rules registry, so each tool asks for its
+ * rules once and `simulate`, `replay` and `runFile` stay registry-free.
+ *
+ * @param {{ modelFile: string, schema: Map<string, object>, readFromFile: (name: string) => unknown }} driver A local driver.
+ * @param {{ simulation: string, stepCount: number, settings: Record<string, number> }} run A loaded run file.
+ * @returns {import('./simulate.js').Rules} The run's simulation's rules, for `replay`.
+ */
+export function preflight(driver, run) {
+  assertSimulation(driver, run);
+  const rules = rulesFor(run.simulation);
+  assertDeclaration(run, rules);
+  return rules;
 }

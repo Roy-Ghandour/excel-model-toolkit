@@ -1,12 +1,22 @@
 {
   "modelkit": 1,
 
-  "label": "base case - no settings, no steps, the model exactly as authored",
+  "label": "base case - the model's own settings, and no decisions in any year",
   "simulation": "aigov",
 
   "model": {
     "file": "AIGovModel.xlsx"
   },
 
-  "steps": []
+  "settings": {
+    "NumYears": 5,
+    "EcEnabled": 1,
+    "EnvEnabled": 1,
+    "DefEnabled": 1,
+    "EduEnabled": 1
+  },
+
+  "stepCount": 6,
+
+  "steps": [{}, {}, {}, {}, {}, {}]
 }

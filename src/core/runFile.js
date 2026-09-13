@@ -81,7 +81,7 @@ function checkWrites(writes, where) {
  * belongs here.
  *
  * @param {unknown} run The parsed JSON.
- * @returns {{ modelkit: number, simulation: string, model?: { file?: string, version?: string, sha256?: string }, id?: string, label?: string, createdAt?: string, origin?: { tool: string }, settings?: Record<string, number>, steps: Array<Record<string, number>> }}
+ * @returns {{ modelkit: number, simulation: string, model?: { file?: string, version?: string, sha256?: string }, id?: string, label?: string, createdAt?: string, origin?: { tool: string }, settings: Record<string, number>, stepCount: number, steps: Array<Record<string, number>> }}
  */
 export function validate(run) {
   if (run === null || typeof run !== "object" || Array.isArray(run)) {
@@ -146,7 +146,10 @@ export function validate(run) {
     }
   }
 
-  if (run.settings !== undefined) checkWrites(run.settings, "settings");
+  // Required so that a run states what it was run under rather than inheriting
+  // whatever the workbook happens to be saved with. Which settings a simulation
+  // expects is its own business — see `assertDeclaration`.
+  checkWrites(run.settings, "settings");
 
   if (!Array.isArray(run.steps)) {
     throw new Error(
@@ -155,10 +158,68 @@ export function validate(run) {
       )}`
     );
   }
-  // Empty is legal: the model's authored base state, untouched.
+  // Empty is legal here: whether a run of zero steps makes sense is the
+  // simulation's call, made in `assertDeclaration` against its `minSteps`.
   run.steps.forEach((writes, step) => checkWrites(writes, `steps[${step}]`));
 
+  if (!Number.isInteger(run.stepCount) || run.stepCount < 0) {
+    throw new Error(
+      `"stepCount" must be a whole number of steps, received: ${describe(
+        run.stepCount
+      )}`
+    );
+  }
+  // The array is what executes; `stepCount` is the author saying what they meant.
+  // A truncated file is otherwise indistinguishable from an intended short run.
+  if (run.stepCount !== run.steps.length) {
+    throw new Error(
+      `"stepCount" is ${run.stepCount} but "steps" holds ${run.steps.length} entries`
+    );
+  }
+
   return run;
+}
+
+/** List names in an error message, in the order the simulation declares them. */
+const list = (names) => names.join(", ");
+
+/**
+ * Check a run file against the static facts its simulation declares about itself.
+ *
+ * Everything here is decided from the file alone — no model is driven, so a run
+ * that cannot be the shape its simulation takes is refused before a driver exists.
+ * Rules that need what the model computes belong in `checkStep`.
+ *
+ * Settings must match *exactly*. Missing means a run silently inherited whatever
+ * the workbook was saved with; unexpected means a setting nobody vetted is reaching
+ * the model. Both are reported at once, with every name — fixing five settings one
+ * error at a time is five pointless cycles.
+ *
+ * @param {ReturnType<typeof validate>} run
+ * @param {{ minSteps: number, maxSteps: number, settings: string[] }} rules Its simulation's.
+ */
+export function assertDeclaration(run, { minSteps, maxSteps, settings }) {
+  if (run.stepCount < minSteps || run.stepCount > maxSteps) {
+    throw new Error(
+      `a run of '${run.simulation}' is ${minSteps} to ${maxSteps} steps long, but "stepCount" is ${run.stepCount}`
+    );
+  }
+
+  const declared = new Set(Object.keys(run.settings));
+  const missing = settings.filter((name) => !declared.has(name));
+  const unexpected = [...declared].filter((name) => !settings.includes(name));
+
+  if (missing.length || unexpected.length) {
+    const problems = [
+      missing.length && `missing ${list(missing)}`,
+      unexpected.length && `unexpected ${list(unexpected)}`,
+    ].filter(Boolean);
+    throw new Error(
+      `"settings" must declare exactly the settings of '${
+        run.simulation
+      }' (${list(settings)}) · ${problems.join(" · ")}`
+    );
+  }
 }
 
 /**

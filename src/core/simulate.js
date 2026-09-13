@@ -10,10 +10,18 @@
  */
 
 /**
- * One simulation's rules. `checkStep` returns a violation per illegal decision.
+ * One simulation's rules: what it declares about itself, and what it checks.
+ *
+ * The three static members are facts about every run of the simulation, checked
+ * from a run file alone by `assertDeclaration` before any model is driven.
+ * `checkStep` is for everything that needs what the model computes. It is given
+ * `length` as well, so a rule can be about the run as a whole and not only the step.
  *
  * @typedef {object} Rules
- * @property {(step: { step: number, writes: object, before: object, after: object }) => Array<{ name: string, reason: string }>} checkStep
+ * @property {number} minSteps Shortest legal run.
+ * @property {number} maxSteps Longest legal run.
+ * @property {string[]} settings Exactly the settings a run file must declare.
+ * @property {(step: { step: number, length: number, writes: object, before: object, after: object }) => Array<{ name: string, reason: string }>} checkStep Returns a violation per illegal decision.
  */
 
 /**
@@ -59,7 +67,7 @@ export async function simulate(
       if (rules) {
         violations.push(
           ...rules
-            .checkStep({ step, writes, before, after: state })
+            .checkStep({ step, length, writes, before, after: state })
             .map((violation) => ({ step, ...violation }))
         );
       }

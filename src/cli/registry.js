@@ -1,13 +1,11 @@
 import { execute } from "../tools/execute.js";
 import { maximize, minimize } from "../tools/optimise.js";
+import { random } from "../tools/random.js";
 import { sample } from "../tools/sample.js";
-import { sweep } from "../tools/sweep.js";
-import { test } from "../tools/test.js";
-import { testFull } from "../tools/testFull.js";
 
 /**
  * Every tool `modelkit` can run.
  *
  * @type {import('./dispatch.js').Tool[]}
  */
-export const tools = [execute, sample, sweep, maximize, minimize, test, testFull];
+export const tools = [execute, random, sample, maximize, minimize];

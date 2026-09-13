@@ -67,7 +67,7 @@ export async function createForioDriver({
   /**
    * Resolve a named range plus a step into an Epicenter cell key.
    * Every failure throws before a request is sent — a malformed key can be
-   * accepted while writing nowhere, which would surface as quietly wrong sweep
+   * accepted while writing nowhere, which would surface as quietly wrong sample
    * data rather than an error.
    */
   function cellKey(name, step) {

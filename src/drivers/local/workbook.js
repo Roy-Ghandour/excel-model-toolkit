@@ -12,8 +12,8 @@ import ExcelJS from 'exceljs';
  *
  * **It refuses rather than guesses.** A workbook feature we cannot represent
  * faithfully throws here, at load time. The alternative — parsing it "mostly" and
- * carrying on — produces a sweep full of plausible, wrong numbers, which is worse
- * than no sweep at all.
+ * carrying on — produces a sample full of plausible, wrong numbers, which is worse
+ * than no sample at all.
  */
 
 /** ExcelJS is 1-based in both axes; HyperFormula (and we) are 0-based. */

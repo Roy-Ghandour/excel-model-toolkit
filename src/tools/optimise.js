@@ -70,7 +70,7 @@ function optimise(name, direction) {
       const driver = await createLocalDriver({ modelPath: resolve(ctx.cwd, modelFile) });
       const rules = preflight(driver, scenario);
 
-      // Any named range the model has can be optimised, not only the ones a sweep
+      // Any named range the model has can be optimised, not only the ones a sample
       // reports — a budget or an intermediate is a perfectly good thing to drive.
       // Checked here so a typo costs nothing rather than hundreds of runs.
       if (!driver.schema.has(objective)) {

@@ -10,9 +10,10 @@ build/
 out/
 *.tsbuildinfo
 
-# --- Sweep output (CSV/XLSX exports are analysis artifacts, not source) ---
+# --- Sample output (CSV/XLSX exports are analysis artifacts, not source) ---
 output/
 results/
+sample-*/
 sweep-*/
 
 # --- Claude Code local state ---

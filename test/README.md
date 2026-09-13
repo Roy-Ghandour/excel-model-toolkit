@@ -67,7 +67,7 @@ corrupts the compounding chain, which is the reason the driver turns it off.
 **`forio-conformance.test.js`** — replays the recorded run: write, step, read, twelve
 times over, comparing every value. This is the only evidence that our cell
 addressing and step semantics match production, and the only thing standing between
-a change to the driver and a sweep full of numbers that look plausible and are
+a change to the driver and a sample full of numbers that look plausible and are
 wrong.
 
 **`local-driver.test.js`** — thirteen properties of the driver, stated directly:
@@ -145,7 +145,7 @@ Stated plainly so nobody mistakes silence for coverage.
 - **Stepping past the end of the timeline.** Not prevented — there is a test that
   documents it. In practice a run that overruns is caught by `write`, which refuses
   a step past a timeline's last column; only a run writing single cells alone could
-  step off the end unnoticed. A sweep will want its own bound.
+  step off the end unnoticed. A sample will want its own bound.
 - **Dates.** HyperFormula turns a date cell into a serial number in the local
   timezone, so two machines could read one differently. Harmless as long as dates
   are only ever stored and displayed, which is the case today — the tool is

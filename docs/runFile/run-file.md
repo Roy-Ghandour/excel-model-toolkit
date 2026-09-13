@@ -1,7 +1,7 @@
 # The run file
 
 A **run file** is the complete description of one run's inputs, as portable JSON.
-It is the unit modelkit's tools trade in: a sweep emits many, `execute` executes
+It is the unit modelkit's tools trade in: a sample emits many, `execute` executes
 one, a compare tool feeds the same one to two model versions.
 
 One rule generates most of what follows: **a run file describes inputs, in the
@@ -21,7 +21,7 @@ knows what the values _mean_ lives in the injected policy layer, never here.
 `[run-file.example.jsonc](run-file.example.jsonc)` **is the canonical example** —
 every field, annotated. Read it first; this document is the contract behind it.
 
-A run file without its `steps` is a `[scenario file](../scenario-file.md)`: what
+A run file without its `steps` is a `[scenario file](../scenarioFile/scenario-file.md)`: what
 a tool that generates decisions is handed, rather than one that replays them.
 
 ## Fields
@@ -69,7 +69,7 @@ alone. Requiring it from the first file costs a line and keeps every run
 verifiable, forever.
 
 A model with no rules worth enforcing still names one: the run files under
-`[runs/](../runs/)` declare `"simulation": "savings"` even though the savings
+`[runs/](../../runs/)` declare `"simulation": "savings"` even though the savings
 workbook has no policy behind it yet.
 
 ### Why `settings` is exhaustive
@@ -116,7 +116,7 @@ for i in 0 .. steps.length-1:
   outright; for a timeline, step 0 is the run's starting column — so one write
   covers both without special-casing.
 
-Implemented in `[src/core/replay.js](../src/core/replay.js)`.
+Implemented in `[src/core/replay.js](../../src/core/replay.js)`.
 
 ## Identity
 
@@ -138,12 +138,12 @@ in the hash, so including it would change the pinned recipe and buy nothing.
 - Key order cannot change an id: `{a:1,b:2}` and `{b:2,a:1}` are the same run.
   Array order can and must, because in `steps` the order _is_ the timeline.
 - Identical decisions collide by construction, so detecting a duplicate run in a
-  sweep costs nothing.
+  sample costs nothing.
 
 Generated run files always carry an `id`. Hand-written ones may omit it — writing a
 run file by hand should not require computing a hash first — and it is derived on
 load. A stored id is currently trusted; see
-`[deferred-decisions.md](deferred-decisions.md)`.
+`[deferred-decisions.md](../deferred-decisions.md)`.
 
 ## Origin
 
@@ -151,7 +151,7 @@ load. A stored id is currently trusted; see
 every writer sets; everything beside it belongs to whichever tool wrote the file.
 
 ```json
-{ "tool": "sweep",   "sweepId": "aigov-baseline-001", "index": 7, "seed": "20260910:7", "strategy": "budget-greedy" }
+{ "tool": "sample",   "sampleId": "aigov-baseline-001", "index": 7, "seed": "20260910:7", "strategy": "budget-greedy" }
 { "tool": "compare", "sourceRunId": "dd891207bc59e44f" }
 { "tool": "hand" }
 ```
@@ -168,7 +168,7 @@ and the seed is only provenance.
 >
 > Nothing branches on it, computes from it, or lets it affect a run's outcome. That
 > is the entire reason it is safe to validate `tool` and nothing else — a typo in
-> `sweepId` cannot change a result, only confuse a reader.
+> `sampleId` cannot change a result, only confuse a reader.
 >
 > The day a tool wants to _branch_ on `origin`, it has stopped being provenance and
 > the union needs real per-tool validation.
@@ -221,5 +221,5 @@ changing execution semantics, or changing the `id` recipe.
 ## Deferred
 
 Decisions that are agreed but deliberately not implemented live in
-`[deferred-decisions.md](deferred-decisions.md)`. This document describes what the
+`[deferred-decisions.md](../deferred-decisions.md)`. This document describes what the
 format _is_; that one records what it will become.

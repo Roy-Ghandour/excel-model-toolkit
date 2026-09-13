@@ -270,7 +270,7 @@ export async function createLocalDriver({ modelPath }) {
         /**
          * Rewind the engine to the workbook's authored state and hand it back.
          *
-         * Building an engine is 87% of a run's cost, so a sweep that rebuilt one per
+         * Building an engine is 87% of a run's cost, so a sample that rebuilt one per
          * run spent almost all its time reconstructing a workbook that never changed.
          * Putting back the cells this run wrote is the same state for a fraction of
          * the work: `getCellSerialized` returns the formula or literal the cell was
@@ -294,7 +294,7 @@ export async function createLocalDriver({ modelPath }) {
           } catch {
             return;
           }
-          // A sweep only ever needs one. The cap is so a burst of concurrent runs
+          // A sample only ever needs one. The cap is so a burst of concurrent runs
           // cannot pin half a gigabyte each for the life of the process.
           if (idle.length < IDLE_LIMIT) idle.push(engine);
         },

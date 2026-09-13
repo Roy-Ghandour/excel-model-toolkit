@@ -3,9 +3,9 @@
 What `[src/simulations/aigov.js](../../src/simulations/aigov.js)` checks, why each
 rule exists, and what in the model or the live sim establishes it — then
 [how it plays the same rules forwards](#generating-a-run) to produce a random run. The
-general design is in
-`[the run-validity spec](../superpowers/specs/2026-09-11-run-validity-design.md)`; this
-is the catalogue.
+general design — the one step loop, the rules interface, `preflight` — is in the code
+it describes: [`simulate.js`](../../src/core/simulate.js) and
+[`simulation.js`](../../src/core/simulation.js). This is the catalogue.
 
 The governing standard: **a run must be one a player could have made.** Not merely
 one the spreadsheet will compute a number for — the spreadsheet will compute a number
@@ -268,7 +268,7 @@ Nothing else is re-randomised. That is precisely what keeps a mutation local: on
 decision differs because the search chose it to, and the rest of the run differs only
 where the model left no choice.
 
-## What a sweep reports
+## What a sample reports
 
 `results` is **the model's Results sheet**, 35 of its 37 named ranges, listed
 literally rather than derived from the sheet at runtime — so which numbers an export

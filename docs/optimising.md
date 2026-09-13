@@ -1,6 +1,6 @@
 # Optimising a run
 
-`sweep` answers *what does this simulation typically do*. `maximize` and `minimize`
+`sample` answers *what does this simulation typically do*. `maximize` and `minimize`
 answer a different question — *what is the best a player could do* — and they need a
 different method, because random sampling has no memory of what worked. A hundred
 random AI-Gov runs plateau (`TrustInGovernment` 44.3–61.2) and the hundred-and-first
@@ -141,7 +141,7 @@ beat where it happened to begin. Restarts exist because a single annealed climb 
 still end in a local optimum and nothing inside it can tell that it has — so each one
 begins from a fresh random run, and only the global best survives.
 
-For a random baseline to compare against, run `sweep` — that is what it is for.
+For a random baseline to compare against, run `sample` — that is what it is for.
 
 ## Output
 
@@ -150,8 +150,8 @@ Nothing is written until the search finishes, so an interrupted search leaves no
 artifacts. The value found is recorded in `origin` alongside the objective and the
 seed, so a file found this way can still be placed a month later.
 
-Because it is an ordinary run file, `execute` will replay it and `test` will check it,
-neither knowing a search ever happened.
+Because it is an ordinary run file, `execute` will replay it, not knowing a search ever
+happened.
 
 ## What is not here
 

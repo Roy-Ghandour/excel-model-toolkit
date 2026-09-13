@@ -26,7 +26,7 @@ hand-editability is a property of this format worth protecting. A warning surfac
 the problem without standing in the way.
 
 **Why deferred.** It was deferred because nothing generated run files. That changed
-on 2026-09-13: [`sample`](../src/tools/sample.js) writes files carrying a stored `id`,
+on 2026-09-13: [`random`](../src/tools/random.js) writes files carrying a stored `id`,
 so a hand-edited one can now be stale and the risk this guards against is live. Still
 unbuilt; this is the next thing in this file to ship.
 
@@ -39,7 +39,7 @@ return { ...run, id: run.id ?? runId(run.settings, run.steps) };
 That `??` is the line this grows out of — replace it with a compare-and-warn. The
 stored ids in `runs/*.run.json` were computed with `runId`, so they will match.
 
-**Related.** The id recipe is pinned in [`run-file.md`](run-file.md#identity).
+**Related.** The id recipe is pinned in [`run-file.md`](runFile/run-file.md#identity).
 Changing what feeds the hash invalidates every id ever written, so if this ships
 after ids are in CSV exports, the recipe is frozen from that point.
 
@@ -48,7 +48,7 @@ after ids are in CSV exports, the recipe is frozen from that point.
 ## Run file fields defined but written by nothing
 
 **Decided 2026-09-10. `createdAt` and `origin` shipped 2026-09-13 with
-[`sample`](../src/tools/sample.js); the two `model` fields not built.**
+[`random`](../src/tools/random.js); the two `model` fields not built.**
 
 Two optional fields remain part of the run file contract and validated when present,
 but written by no code today:
@@ -92,11 +92,10 @@ policy availability and the rest are still to come.
 to it can never be verified, and the information is not recoverable from the
 decisions alone, so it could never be retrofitted onto an existing corpus.
 
-**Where it plugs in.** Step 2 of the
-[run-validity design](superpowers/specs/2026-09-11-run-validity-design.md):
-`simulation` keys a rules registry, and legality is checked during replay against
-the model's live state. Not as a pure function of the JSON, because AI-Gov's rules
-depend on values the model computes.
+**Where it plugs in.** [`rulesFor`](../src/simulations/registry.js): `simulation`
+keys a rules registry, and legality is checked during replay against the model's
+live state. Not as a pure function of the JSON, because AI-Gov's rules depend on
+values the model computes.
 
 **Resolved: what value belongs here.** A short ruleset id modelkit owns (`aigov`,
 `savings`), not an Epicenter project short name, since the same model runs on more
@@ -109,8 +108,8 @@ than one project.
 **Decided 2026-09-13. Built, unused.**
 
 Every simulation now implements `randomSettings(rng)`, which draws one legal settings
-map. Nothing calls it. [`sweep`](../src/tools/sweep.js) requires a
-[scenario file](scenario-file.md), and [`sample`](../src/tools/sample.js) always has.
+map. Nothing calls it. [`sample`](../src/tools/sample.js) requires a
+[scenario file](scenarioFile/scenario-file.md), and [`random`](../src/tools/random.js) always has.
 
 **Why it exists anyway.** A deliberate exception to YAGNI, made explicitly rather than
 by drift: it was written alongside `results` as one expansion of the rules interface,
@@ -122,24 +121,24 @@ Adding it later would mean reopening every simulation for a second time.
 settings derives its length from them**, rather than taking a length and hoping the
 draw agrees.
 
-That tension is what produced the [scenario file](scenario-file.md) on 2026-09-13:
+That tension is what produced the [scenario file](scenarioFile/scenario-file.md) on 2026-09-13:
 `stepCount` and `settings` now travel as one object precisely because they are one
 fact. But it is not resolved, only relocated. A caller of `randomSettings` must
 displace *both* fields of the scenario together, drawing `stepCount` from the settings
 it drew — it cannot draw settings into a scenario that already states a length.
 
 **Where it plugs in.** A future generation tool that wants variety across settings and
-not only across decisions — `sweep --random-settings`, most likely, which would make
+not only across decisions — `sample --random-settings`, most likely, which would make
 the scenario file's `stepCount` and `settings` optional together rather than required
 together.
 
 ---
 
-## Running a sweep's runs in parallel
+## Running a sample's runs in parallel
 
 **Decided 2026-09-13. Measured, not built.**
 
-`sweep` drives its runs one at a time. Worker threads would parallelise them — each run
+`sample` drives its runs one at a time. Worker threads would parallelise them — each run
 is fully independent — but the measurements say it is not worth it yet.
 
 **Note first that `Promise.all` would do nothing.** The local driver's `read`, `write`
@@ -166,13 +165,13 @@ per run, taking 100 runs from 2m30s to 31s — because 87% of a run was
 `HyperFormula.buildFromSheets` rather than the simulation. 1.86x on top of that is a
 poor return for a worker pool, slicing, and per-worker workbook parses.
 
-**Where it plugs in.** The loop in [`sweep`](../src/tools/sweep.js), behind a `--workers`
+**Where it plugs in.** The loop in [`sample`](../src/tools/sample.js), behind a `--workers`
 flag. Note that engine reuse makes this *worse* per worker, not better: each worker would
 hold its own pooled engine, multiplying the memory pressure that already caps the curve
 above. Re-measure before building.
 
-Since 2026-09-13 [`anneal`](../src/core/anneal.js) wants this more than `sweep` does, and
-can use it less: a sweep's runs are independent, but a climb's are inherently sequential —
+Since 2026-09-13 [`anneal`](../src/core/anneal.js) wants this more than `sample` does, and
+can use it less: a sample's runs are independent, but a climb's are inherently sequential —
 each candidate is a mutation of the one before. Only the **restarts** parallelise, which
 caps the speedup at `--restarts` however many cores there are.
 
@@ -212,7 +211,7 @@ criterion is needed, and picking one is the real work here.
 every step — 1329 of them for AIGovModel. A search of 623 runs does that ~3700 times.
 
 **Why it is tempting.** It is where the 0.3s per run goes, now that engine rebuilds are
-gone, and a search feels the cost 623 times over where `sample` feels it once.
+gone, and a search feels the cost 623 times over where `random` feels it once.
 
 **Why it is not obviously a win.** The rules need most of them. `sample`, `repair` and
 `mutate` read `<id>Show`, `<id>CanCancel`, `<id>CostValue`, `<id>CostRecurringValue`,

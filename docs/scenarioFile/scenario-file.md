@@ -2,10 +2,10 @@
 
 A **scenario file** describes the conditions a run happens under, without the
 run. It is what you hand to a tool that *generates* decisions rather than
-replaying them — [`sample`](../src/tools/sample.js) and
-[`sweep`](../src/tools/sweep.js) today.
+replaying them — [`random`](../../src/tools/random.js) and
+[`sample`](../../src/tools/sample.js) today.
 
-**A scenario is exactly a [run file](runFile/run-file.md) minus `steps`.** Same
+**A scenario is exactly a [run file](../runFile/run-file.md) minus `steps`.** Same
 `modelkit` version, same `simulation`, same exhaustive `settings`, same
 `stepCount`. That is the whole definition, and it is deliberate: a generator is
 handed everything a run declares except the decisions, which are the thing it is
@@ -23,8 +23,9 @@ about to invent.
 }
 ```
 
-`[runs/aigov.scenario.json](../runs/aigov.scenario.json)` is the real one, with
-all sixteen AI-Gov settings.
+`[scenario-file.example.jsonc](scenario-file.example.jsonc)` is the annotated
+example; `[runs/aigov.scenario.json](../../runs/aigov.scenario.json)` is the real
+one, with all sixteen AI-Gov settings.
 
 ## Fields
 
@@ -54,7 +55,7 @@ because an override would reinstate precisely the inconsistency this removes.
 The model already declares its own simulation in its `ModelKitID` named range, so
 this looks redundant. It is not, for two reasons.
 
-It makes a scenario the exact shape [`preflight`](../src/core/simulation.js)
+It makes a scenario the exact shape [`preflight`](../../src/core/simulation.js)
 takes, so every tool gets the model match, the ruleset lookup and
 `assertDeclaration` from one call instead of keeping a local copy of two of the
 three. Requiring the field deleted code rather than adding any.
@@ -65,12 +66,12 @@ rather than surfacing later as a baffling list of missing settings.
 
 ## Validation
 
-Three layers, the same shape as the [run file's](runFile/run-file.md#validation)
+Three layers, the same shape as the [run file's](../runFile/run-file.md#validation)
 and sharing its code:
 
-1. **Structure** — [`validate`](../src/core/scenario.js). Fields present and the
+1. **Structure** — [`validate`](../../src/core/scenario.js). Fields present and the
    right type; every value in `settings` a finite number.
-2. **Declaration** — [`assertDeclaration`](../src/core/runFile.js), via
+2. **Declaration** — [`assertDeclaration`](../../src/core/runFile.js), via
    `preflight`. `stepCount` within the simulation's `minSteps`..`maxSteps`, and
    `settings` matching its declared list exactly — every missing and unexpected
    name reported at once.

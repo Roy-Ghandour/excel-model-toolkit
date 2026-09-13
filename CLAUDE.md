@@ -1,13 +1,16 @@
 # modelkit — Claude guidance
 
-Headless test-suite / sweep tool for **Forio Epicenter Excel models**. Built
+Headless test-suite / sampling tool for **Forio Epicenter Excel models**. Built
 specifically for the **AI-Governance** simulation first, behind dependency-injected
 seams so it can be re-pointed at another model later ("Doom runs on anything").
 
-Source lives in [`src/`](src). The design documents that are still live are under
-[`docs/`](docs) — [the run-validity spec](docs/superpowers/specs/2026-09-11-run-validity-design.md)
-is the one that drives current work. `references/` and `docs/inherited/` are
-read-only reference material.
+Source lives in [`src/`](src). [`docs/`](docs) is a **shared space with humans**:
+the format contracts ([run file](docs/runFile/run-file.md),
+[scenario file](docs/scenarioFile/scenario-file.md)), the per-simulation rule
+catalogues ([`docs/simulations/`](docs/simulations)), and
+[what is planned but unbuilt](docs/planned-tools.md). Material that is only ever
+read by an assistant belongs in [`.claude/reference/`](.claude/reference), not
+there. `references/` is read-only.
 
 ## Non-negotiable principles
 
@@ -15,7 +18,7 @@ read-only reference material.
    may know that the model is AI-Governance, that the runtime is Forio, or that
    named ranges are called `EcPro7`. The generic core talks to interfaces only.
 2. **YAGNI.** Implement a feature the first time it is actually needed, not before.
-   The only tool in v1 is the random-sweep exporter.
+   The only tools in v1 are the random-run generator and the sample exporter.
 3. **No database.** Results are exported as CSV/XLSX for analysis elsewhere.
 4. **One model file.** Version management is manual (file management / git);
    the tool cares about exactly one `.xlsx` at a time and records which one it used.
@@ -37,6 +40,8 @@ Local durable references:
 
 - `.claude/reference/forio-epicenter-platform.md` — platform, SDK, run API, file API
 - `.claude/reference/epicenter-model-interaction.md` — how the AI-gov sim drives the model
+- `.claude/reference/forio-mvp-findings.md` — what the predecessor MVP verified live
+  against Forio: auth scopes, the file API, the upload path `forioDriver.js` is built on
 
 ## What is in `references/` (read-only)
 
@@ -51,7 +56,6 @@ Local durable references:
 | `references/ai-governance-model/namedRanges.txt` | 1329 named ranges — the model's public API. |
 | `references/ai-governance-model/constants.js` | The live sim's `namedRanges`, `MODEL_FILE`, `defaultSimSettings`, `singleCellDecisionVars`. |
 | `references/forio-deploy/` | Forio's own proxy deploy script (team-account pattern, zip+explode). |
-| `docs/inherited/` | The predecessor `model-tool` project's design, MVP findings, hosting notes. **`mvp-findings.md` is the most valuable — it records what was verified live.** |
 
 The live sim repo is a sibling: `/Users/roy/Desktop/Work/ai-governance`.
 

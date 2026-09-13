@@ -1,0 +1,29 @@
+// A scenario file, with every field it may carry.
+//
+// A scenario is exactly a run file minus `steps` — what you hand a tool that
+// generates decisions rather than replaying them.
+//
+// This is a reference, not a runnable file: JSON has no comments, so this is `.jsonc`.
+
+{
+  // REQUIRED - format version. Shared with the run file, currently 1.
+  "modelkit": 1,
+
+  // REQUIRED - shortname for simulation, determines the ruleset generated runs are
+  // checked against. Must match the model's own `ModelKitID` named range.
+  "simulation": "aigov",
+
+  // REQUIRED - how many steps each generated run has. Must sit within the
+  // simulation's minSteps..maxSteps, and for aigov must equal NumYears + 1.
+  "stepCount": 4,
+
+  // REQUIRED - named ranges written once, before any stepping. Exactly the settings
+  // the simulation declares, no more and no fewer. These five are aigov's.
+  "settings": {
+    "NumYears": 3,
+    "EcEnabled": 1,
+    "EnvEnabled": 1,
+    "DefEnabled": 1,
+    "EduEnabled": 1
+  }
+}

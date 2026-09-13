@@ -7,12 +7,12 @@ import { describe } from "./violations.js";
  * Search a simulation's runs for the one that drives a named range furthest.
  *
  * Hill-climbing with simulated annealing, restarted from scratch several times. The
- * climbing is what random sampling cannot do — a sweep has no memory of what worked —
+ * climbing is what random sampling cannot do — a sample has no memory of what worked —
  * and the annealing is what stops the climb settling for the first hill it finds.
  * Restarts are the outer guard: a single annealed climb can still end in a local
  * optimum, and nothing inside the climb can tell that it has.
  *
- * **A candidate costs one full model run**, the same as a sweep row. That is the whole
+ * **A candidate costs one full model run**, the same as a sample row. That is the whole
  * cost model: 200 iterations across 3 restarts is 623 runs, a few minutes for AI-Gov.
  *
  * Everything simulation-specific is injected. This file knows that a run has steps and

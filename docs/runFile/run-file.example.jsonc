@@ -34,10 +34,10 @@
   // OPTIONAL - how this file came to exist. Absent on hand-written run files.
   "origin": {
     // REQUIRED when `origin` is present - which tool wrote this file.
-    "tool": "sweep",
+    "tool": "sample",
 
-    // Everything below is the sweep tool's own; another tool sets other fields.
-    "sweepId": "aigov-baseline-001",
+    // Everything below is the sample tool's own; another tool sets other fields.
+    "sampleId": "aigov-baseline-001",
     "index": 7,
     "seed": "20260910:7"
   },

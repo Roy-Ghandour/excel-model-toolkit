@@ -1,32 +1,47 @@
-import { resolve } from "node:path";
-import { parse } from "../cli/args.js";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
+import { parse, whole } from "../cli/args.js";
+import { seconds } from "../core/format.js";
 import { generate } from "../core/generate.js";
+import { endOfRun, summarize, toCsv } from "../core/results.js";
 import { createRng } from "../core/rng.js";
 import { writeRunFile } from "../core/runFile.js";
 import { loadScenario } from "../core/scenario.js";
 import { preflight } from "../core/simulation.js";
-import { assertValid } from "../core/violations.js";
+import { describe } from "../core/violations.js";
 import { createLocalDriver } from "../drivers/local/localDriver.js";
 
-/** Generate one random, valid run of whatever simulation a model implements. */
+/** Generate many random valid runs of one model, and a table of how they turned out. */
+
+/** A folder name that sorts by when the sample ran and survives every filesystem. */
+const stamp = () =>
+  `sample-${new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)}`;
+
+/** The column the run id goes in, and the one the summary rows label themselves in. */
+const ID = "id";
 
 /** @type {import('../cli/dispatch.js').Tool} */
 export const sample = {
   name: "sample",
-  summary: "Generate a random valid run file for a model",
+  summary: "Generate many random valid runs and export their results as CSV",
   usage: [
-    "usage: modelkit sample <model.xlsx> <scenario.json> [--seed <s>] [--out <file>]",
+    "usage: modelkit sample <model.xlsx> <scenario.json> [--runs <n>] [--seed <s>] [--out <dir>]",
     "",
-    "Plays the model at random, choosing only what the simulation's rules allow, and",
-    "writes the result as a run file. Prints to stdout unless --out is given.",
+    "Plays the model at random many times over, writing one run file per run plus a",
+    "sample.csv holding each run's id and its simulation's results.",
     "",
-    "The scenario file carries the settings and how many steps the run has; see",
-    "docs/scenario-file.md.",
+    "The scenario file carries the settings and how many steps each run has; every run",
+    "of a sample shares them. See docs/scenarioFile/scenario-file.md.",
     "",
-    "  --seed    number or text; the same seed and model reproduce the same run",
-    "  --out     write the run file here instead of stdout",
+    "  --runs    how many runs to generate (default 100)",
+    "  --seed    number or text; the same seed, model and scenario reproduce the sample",
+    "  --out     write the folder here instead of ./sample-<timestamp>",
     "",
-    "  modelkit sample models/AIGovModel.xlsx runs/aigov.scenario.json --seed 1",
+    "Each result is read at the run's last step, so the model's authored tail past the",
+    "end of a short run is never reported. The CSV ends with a max, min and average row.",
+    "",
+    "  modelkit sample models/AIGovModel.xlsx runs/aigov.scenario.json",
+    "  modelkit sample models/test.xlsx runs/savings.scenario.json --runs 20 --seed abc",
   ].join("\n"),
 
   async run(args, ctx) {
@@ -37,36 +52,105 @@ export const sample = {
       return 1;
     }
 
-    // A recorded seed is what makes a run reproducible, so an unspecified one is
-    // chosen here rather than left to chance inside the generator. Kept as text: the
-    // rng hashes it either way, and the run file records exactly what was typed.
+    const runs = flags.runs === undefined ? 100 : whole(flags.runs, "runs", 1);
+
+    // One seed for the sample, one derived seed per run: the sample reproduces whole,
+    // and any single row of it reproduces on its own.
     const seed = flags.seed ?? String(Date.now());
-    const scenario = await loadScenario(resolve(ctx.cwd, scenarioFile));
+    const { simulation, settings, stepCount: length } = await loadScenario(
+      resolve(ctx.cwd, scenarioFile)
+    );
+
+    // Parsing the workbook is a one-off the whole sample shares, so it is timed apart
+    // from the runs — otherwise a short sample looks slower per run than a long one.
+    const started = performance.now();
     const driver = await createLocalDriver({ modelPath: resolve(ctx.cwd, modelFile) });
+    const load = performance.now() - started;
 
-    // A scenario is a run file without its decisions, so it faces the same checks a
-    // run file does — and an impossible request is refused before a model is driven.
-    const rules = preflight(driver, scenario);
+    // Everything decidable from the request alone, decided once rather than `runs` times.
+    const rules = preflight(driver, { simulation, stepCount: length, settings });
 
-    const { runFile, violations } = await generate(driver, {
-      simulation: scenario.simulation,
-      settings: scenario.settings,
-      length: scenario.stepCount,
-      rules,
-      rng: createRng(seed),
-      origin: { tool: "sample", seed },
-    });
+    const columns = [ID, "seed", "steps", ...rules.settings, ...rules.results];
+    const directory = resolve(ctx.cwd, flags.out ?? stamp());
+    let created = false;
 
-    // `sample` draws only from the legal set, so a violation here is a bug in the
-    // sampler rather than a run to throw away. Either way nothing invalid is emitted.
-    assertValid(violations);
+    const rows = [];
+    const seen = new Set();
+    let invalid = 0;
+    let duplicate = 0;
 
-    if (!flags.out) {
-      process.stdout.write(`${JSON.stringify(runFile, null, 2)}\n`);
-      return;
+    for (let index = 0; index < runs; index++) {
+      const runSeed = `${seed}/${index}`;
+      const { runFile, trace, violations } = await generate(driver, {
+        simulation,
+        settings,
+        length,
+        rules,
+        rng: createRng(runSeed),
+        origin: { tool: "sample", seed: runSeed },
+      });
+
+      if (violations.length > 0) {
+        // Every run of a sample shares one scenario, so a violation on the first one is
+        // a property of the request rather than of the draw — a `stepCount` its own
+        // settings contradict, say, which only `checkStep` can see. Later ones are a
+        // sampler bug in one draw, and 99 good runs outlive it.
+        if (index === 0) {
+          throw new Error(
+            `${describe(violations)}\n\nthe first run of the sample is invalid, so every run would be`
+          );
+        }
+        console.error(`run ${index + 1}/${runs} · invalid · ${describe(violations)}`);
+        invalid++;
+        continue;
+      }
+
+      if (seen.has(runFile.id)) {
+        console.error(`run ${index + 1}/${runs} · ${runFile.id} · duplicate, skipped`);
+        duplicate++;
+        continue;
+      }
+      seen.add(runFile.id);
+
+      // Made here rather than up front, so an aborted sample leaves no empty folder.
+      if (!created) {
+        await mkdir(directory, { recursive: true });
+        created = true;
+      }
+
+      await writeRunFile(join(directory, `${runFile.id}.run.json`), runFile);
+      rows.push({
+        [ID]: runFile.id,
+        seed: runSeed,
+        steps: length,
+        ...settings,
+        ...endOfRun(trace.final, rules.results, length),
+      });
+      console.error(`run ${index + 1}/${runs} · ${runFile.id}`);
     }
-    await writeRunFile(resolve(ctx.cwd, flags.out), runFile);
-    // Diagnostics, so `--out` stays silent on stdout.
-    console.error(`run ${runFile.id} · seed ${seed} · ${flags.out}`);
+
+    await writeFile(
+      join(directory, "sample.csv"),
+      toCsv(columns, [...rows, ...summarize(rows, columns, ID)])
+    );
+
+    const skipped = [
+      invalid && `${invalid} invalid`,
+      duplicate && `${duplicate} duplicate`,
+    ].filter(Boolean);
+    // Per run is over every run attempted, skipped ones included: they cost the same
+    // to generate, so it is the number that predicts what a larger sample will take.
+    const elapsed = performance.now() - started;
+    console.error(
+      `\n${rows.length} run${rows.length === 1 ? "" : "s"} · ${directory}${
+        skipped.length ? ` · skipped ${skipped.join(", ")}` : ""
+      }`
+    );
+    console.error(
+      `${seconds(elapsed)} total · ${seconds(load)} loading the model · ${seconds(
+        (elapsed - load) / runs
+      )} per run`
+    );
+    return skipped.length ? 1 : 0;
   },
 };

@@ -60,11 +60,36 @@ The value ranking is required because it moves the model: `TrustInGovernment` re
 46.3 under `1..6` and 43 under `6..1`. A run states the ranking it ran under rather
 than inheriting the workbook's.
 
+## The settings
+
+Written once, before the first step, and a run must declare all sixteen exactly:
+
+| Setting | What it is |
+|---|---|
+| `NumYears` | 3–6, the facilitator's slider |
+| `EcEnabled`, `EnvEnabled`, `DefEnabled`, `EduEnabled` | which ministries are in play |
+| `_C1Enabled` … `_C6Enabled` | crisis `n`, firing in year `n` |
+| `News2Enabled` … `News6Enabled` | breaking news `n`, likewise — year 1 has none |
+
+The event list is what the sim's settings screen offers. The model carries `_C7`/`_C8`
+and `News1`/`News7`/`News8` blocks that no screen reaches and `crisis-data.js` does
+not describe; they are left out for the same reason `Pro16`–`Pro24` are.
+
+The events are required for the reason the ranking is: the workbook is saved with
+**every crisis enabled**, so a run that stays quiet about them inherits all six. The
+live sim never does — its `defaultSimSettings` sets all sixteen event flags to 0 and
+writes them on every save.
+
+Unlike the other settings, the event flags are 9-wide timelines rather than single
+cells. It makes no difference to how they are written: the first column is a literal
+and the rest is a `=prev` chain, so setting one at step 0 sets it for the whole run.
+
 ## The rules
 
 | Rule | Check | Established by |
 |---|---|---|
 | **Run length** | `NumYears + 1 === length`, checked at step 0 | `NumYears` is a single cell, so the length is settled before the first year |
+| **Event fits the run** | no enabled `_C<n>Enabled` / `News<n>Enabled` whose year is past `NumYears`, checked at step 0 | saving the settings screen switches every out-of-range one off, so a facilitator cannot produce the state |
 | **Setup turn** | step 0 takes the whole ranking and nothing else | column 0 is the baseline; the ranking is the only setup the model reads |
 | **Ranking is a permutation** | the six values are 1–6, once each | six values, six ranks |
 | **Ministry in play** | no write to a ministry whose `<M>Enabled` is 0 | a disabled ministry never existed; the sim's own over-budget check filters through the enabled list, so nothing else would catch it |
@@ -126,8 +151,10 @@ leftovers, Economy only.
 - **`RolesConfirmed` / `ValuesConfirmed` / `MinistriesConfirmed`** are frontend submit
   gates, not model inputs — a run computes correctly with `ValuesConfirmed` at 0.
   They are refused as unwritable until something needs them.
-- **Crises and breaking news** (`_C<n>*`, `News<n>*`) are facilitator-configured
-  events, not player decisions. Note they are timelines, not settings.
+- **Crises and breaking news** are facilitator-configured events, not player
+  decisions — `_C<n>Prepared` is computed from what the player spent, so switching a
+  crisis on adds no decision and no new budget path. Their `Enabled` flags *are*
+  settings; the rest of `_C<n>*` and `News<n>*` is model bookkeeping.
 - **No cap on policies per year, no prerequisites between policies, no minimum
   spend.** Every `Show` formula references only its own block, so nothing gates one
   policy on another. The budget is the only limit.

@@ -21,6 +21,19 @@
 
 const MINISTRIES = ["Ec", "Env", "Def", "Edu"];
 
+/**
+ * The events a facilitator switches on, each fixed to the year it fires in.
+ *
+ * Crisis `n` and breaking news `n` belong to year `n`, and the sim's settings screen
+ * offers crises 1-6 and news 2-6 — year 1 has no breaking news. They are 9-wide
+ * timelines whose first column is a literal and whose rest is a `=prev` chain, so
+ * writing one at step 0 sets it for the whole run: settings in everything but shape.
+ */
+const EVENTS = [
+  ...[1, 2, 3, 4, 5, 6].map((year) => ({ name: `_C${year}Enabled`, year })),
+  ...[2, 3, 4, 5, 6].map((year) => ({ name: `News${year}Enabled`, year })),
+];
+
 /** Highest `Pro` with a card in the sim. The model carries blocks to 24 with none. */
 const LAST_POLICY = { Ec: 13, Env: 15, Def: 15, Edu: 14 };
 
@@ -279,7 +292,14 @@ export const aigov = {
   minSteps: 4,
   maxSteps: 7,
 
-  settings: ["NumYears", "EcEnabled", "EnvEnabled", "DefEnabled", "EduEnabled"],
+  settings: [
+    "NumYears",
+    "EcEnabled",
+    "EnvEnabled",
+    "DefEnabled",
+    "EduEnabled",
+    ...EVENTS.map((event) => event.name),
+  ],
 
   // Every named range on the model's Results sheet, which is the sim's own answer to
   // which numbers are the outcome. All are 9-wide timelines but `Step`. The two data
@@ -338,6 +358,18 @@ export const aigov = {
       });
     }
 
+    // Settled at step 0 for the same reason. Saving the settings screen switches off
+    // every event past the end of the run, so one left on is a run no facilitator
+    // could have set up.
+    for (const { name, year } of EVENTS) {
+      if (before[name][0] === 1 && year > before.NumYears) {
+        violations.push({
+          name,
+          reason: `fires in year ${year}, past the end of a ${before.NumYears}-year run`,
+        });
+      }
+    }
+
     return violations;
   },
 
@@ -346,15 +378,27 @@ export const aigov = {
   },
 
   /**
-   * The facilitator's own choices, drawn at random: how many years, and which
-   * ministries are in play. All four may come up disabled — the sim allows a run where
-   * only the ranking and the dilemmas move.
+   * The facilitator's own choices, drawn at random: how many years, which ministries
+   * are in play, and which crises and breaking news fire. All four ministries may come
+   * up disabled — the sim allows a run where only the ranking and the dilemmas move.
+   *
+   * Years are drawn first because an event past the end of the run is not a setting a
+   * facilitator can save, so the length has to be known before the events are.
    */
-  randomSettings: (rng) => ({
-    NumYears: 3 + rng.int(4),
-    EcEnabled: rng.chance() ? 1 : 0,
-    EnvEnabled: rng.chance() ? 1 : 0,
-    DefEnabled: rng.chance() ? 1 : 0,
-    EduEnabled: rng.chance() ? 1 : 0,
-  }),
+  randomSettings: (rng) => {
+    const NumYears = 3 + rng.int(4);
+    return {
+      NumYears,
+      EcEnabled: rng.chance() ? 1 : 0,
+      EnvEnabled: rng.chance() ? 1 : 0,
+      DefEnabled: rng.chance() ? 1 : 0,
+      EduEnabled: rng.chance() ? 1 : 0,
+      ...Object.fromEntries(
+        EVENTS.map(({ name, year }) => [
+          name,
+          year <= NumYears && rng.chance() ? 1 : 0,
+        ])
+      ),
+    };
+  },
 };

@@ -1,0 +1,27 @@
+{
+  "modelkit": 1,
+  "simulation": "aigov",
+
+  "stepCount": 6,
+
+  "settings": {
+    "NumYears": 5,
+    "EcEnabled": 1,
+    "EnvEnabled": 1,
+    "DefEnabled": 1,
+    "EduEnabled": 1,
+
+    "_C1Enabled": 0,
+    "_C2Enabled": 0,
+    "_C3Enabled": 0,
+    "_C4Enabled": 0,
+    "_C5Enabled": 0,
+    "_C6Enabled": 0,
+
+    "News2Enabled": 0,
+    "News3Enabled": 0,
+    "News4Enabled": 0,
+    "News5Enabled": 0,
+    "News6Enabled": 0
+  }
+}

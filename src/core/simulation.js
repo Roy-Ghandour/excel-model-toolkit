@@ -5,13 +5,16 @@ import { rulesFor } from "../simulations/registry.js";
 export const SIMULATION_ID = "ModelKitID";
 
 /**
- * Refuse a run file written for a different simulation than the model implements.
+ * Refuse a run written for a different simulation than the model implements.
  * The id is read from the file itself, so the check costs no run.
  *
+ * The run may be a run file or a scenario — both declare a `simulation` — so the
+ * message names what was declared rather than which kind of file declared it.
+ *
  * @param {{ modelFile: string, schema: Map<string, object>, readFromFile: (name: string) => unknown }} driver A local driver.
- * @param {{ simulation: string }} runFile
+ * @param {{ simulation: string }} run
  */
-export function assertSimulation(driver, runFile) {
+export function assertSimulation(driver, run) {
   if (!driver.schema.has(SIMULATION_ID)) {
     throw new Error(
       `${driver.modelFile} has no '${SIMULATION_ID}' named range, so which simulation it implements is unknown`
@@ -19,9 +22,9 @@ export function assertSimulation(driver, runFile) {
   }
 
   const simulation = driver.readFromFile(SIMULATION_ID);
-  if (simulation !== runFile.simulation) {
+  if (simulation !== run.simulation) {
     throw new Error(
-      `run file is a run of '${runFile.simulation}' but ${driver.modelFile} implements '${simulation}'`
+      `a run of '${run.simulation}' cannot be driven against ${driver.modelFile}, which implements '${simulation}'`
     );
   }
 }
@@ -34,7 +37,7 @@ export function assertSimulation(driver, runFile) {
  * rules once and `simulate`, `replay` and `runFile` stay registry-free.
  *
  * @param {{ modelFile: string, schema: Map<string, object>, readFromFile: (name: string) => unknown }} driver A local driver.
- * @param {{ simulation: string, stepCount: number, settings: Record<string, number> }} run A loaded run file.
+ * @param {{ simulation: string, stepCount: number, settings: Record<string, number> }} run A loaded run file, or a scenario about to become one.
  * @returns {import('./simulate.js').Rules} The run's simulation's rules, for `replay`.
  */
 export function preflight(driver, run) {

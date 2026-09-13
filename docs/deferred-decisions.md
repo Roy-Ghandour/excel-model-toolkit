@@ -109,8 +109,8 @@ than one project.
 **Decided 2026-09-13. Built, unused.**
 
 Every simulation now implements `randomSettings(rng)`, which draws one legal settings
-map. Nothing calls it. [`sweep`](../src/tools/sweep.js) requires a settings file, and
-[`sample`](../src/tools/sample.js) always has.
+map. Nothing calls it. [`sweep`](../src/tools/sweep.js) requires a
+[scenario file](scenario-file.md), and [`sample`](../src/tools/sample.js) always has.
 
 **Why it exists anyway.** A deliberate exception to YAGNI, made explicitly rather than
 by drift: it was written alongside `results` as one expansion of the rules interface,
@@ -118,15 +118,20 @@ while the reasoning about what a simulation declares about itself was in front o
 Adding it later would mean reopening every simulation for a second time.
 
 **The tension a caller has to resolve.** AI-Gov's settings *imply the run's length* —
-`NumYears + 1 === stepCount`, enforced by `checkStep` at step 0. So `randomSettings`
-draws a `NumYears` of 3 to 6 that will contradict any `--steps` the caller was also
-given. **A tool that draws settings derives its length from them**, rather than taking
-a length and hoping the draw agrees. That inverts the argument handling of both tools
-that exist today, which is the real reason neither calls it yet.
+`NumYears + 1 === stepCount`, enforced by `checkStep` at step 0. **A tool that draws
+settings derives its length from them**, rather than taking a length and hoping the
+draw agrees.
+
+That tension is what produced the [scenario file](scenario-file.md) on 2026-09-13:
+`stepCount` and `settings` now travel as one object precisely because they are one
+fact. But it is not resolved, only relocated. A caller of `randomSettings` must
+displace *both* fields of the scenario together, drawing `stepCount` from the settings
+it drew — it cannot draw settings into a scenario that already states a length.
 
 **Where it plugs in.** A future generation tool that wants variety across settings and
-not only across decisions — `sweep --random-settings`, most likely, with `--steps`
-becoming derived rather than required.
+not only across decisions — `sweep --random-settings`, most likely, which would make
+the scenario file's `stepCount` and `settings` optional together rather than required
+together.
 
 ---
 

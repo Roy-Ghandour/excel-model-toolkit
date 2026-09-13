@@ -38,7 +38,7 @@ export function runId(settings, steps) {
 }
 
 /** Render a value inside an error message without it turning into `[object Object]`. */
-function describe(value) {
+export function describe(value) {
   if (typeof value === "string") return JSON.stringify(value);
   if (Array.isArray(value)) return "an array";
   if (value !== null && typeof value === "object") return "an object";
@@ -55,7 +55,7 @@ function describe(value) {
  * @param {unknown} writes The candidate map.
  * @param {string} where Path to report, e.g. `steps[3]`.
  */
-function checkWrites(writes, where) {
+export function checkWrites(writes, where) {
   if (writes === null || typeof writes !== "object" || Array.isArray(writes)) {
     throw new Error(
       `${where} must be an object of named-range writes, received: ${describe(

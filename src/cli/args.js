@@ -1,5 +1,3 @@
-import { readFile } from "node:fs/promises";
-
 /** Argument handling every tool shares. */
 
 /** Pull `--flag value` pairs off the command line, leaving the positional arguments. */
@@ -11,16 +9,6 @@ export function parse(args) {
     else positional.push(args[i]);
   }
   return { flags, positional };
-}
-
-/** Read a settings file: a plain map of named range to number, nothing more. */
-export async function loadSettings(path) {
-  const source = await readFile(path, "utf8");
-  try {
-    return JSON.parse(source);
-  } catch (error) {
-    throw new Error(`${path} is not valid JSON: ${error.message}`);
-  }
 }
 
 /**

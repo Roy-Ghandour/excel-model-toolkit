@@ -1,13 +1,13 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { loadSettings, parse, whole } from "../cli/args.js";
+import { parse, whole } from "../cli/args.js";
 import { generate } from "../core/generate.js";
 import { endOfRun, summarize, toCsv } from "../core/results.js";
 import { createRng } from "../core/rng.js";
-import { assertDeclaration, writeRunFile } from "../core/runFile.js";
-import { SIMULATION_ID } from "../core/simulation.js";
+import { writeRunFile } from "../core/runFile.js";
+import { loadScenario } from "../core/scenario.js";
+import { preflight } from "../core/simulation.js";
 import { describe } from "../core/violations.js";
-import { rulesFor } from "../simulations/registry.js";
 import { createLocalDriver } from "../drivers/local/localDriver.js";
 
 /** Generate many random valid runs of one model, and a table of how they turned out. */
@@ -31,38 +31,41 @@ export const sweep = {
   name: "sweep",
   summary: "Generate many random valid runs and export their results as CSV",
   usage: [
-    "usage: modelkit sweep <model.xlsx> <settings.json> --steps <n> [--runs <n>] [--seed <s>] [--out <dir>]",
+    "usage: modelkit sweep <model.xlsx> <scenario.json> [--runs <n>] [--seed <s>] [--out <dir>]",
     "",
     "Plays the model at random many times over, writing one run file per run plus a",
     "sweep.csv holding each run's id and its simulation's results.",
     "",
-    "  --steps   how many steps each run has, including the simulation's own setup turn",
+    "The scenario file carries the settings and how many steps each run has; every run",
+    "of a sweep shares them. See docs/scenario-file.md.",
+    "",
     "  --runs    how many runs to generate (default 100)",
-    "  --seed    number or text; the same seed, model and settings reproduce the sweep",
+    "  --seed    number or text; the same seed, model and scenario reproduce the sweep",
     "  --out     write the folder here instead of ./sweep-<timestamp>",
     "",
     "Each result is read at the run's last step, so the model's authored tail past the",
     "end of a short run is never reported. The CSV ends with a max, min and average row.",
     "",
-    "  modelkit sweep models/AIGovModel.xlsx runs/aigov.settings.json --steps 6",
-    "  modelkit sweep models/test.xlsx runs/savings.settings.json --steps 8 --runs 20 --seed abc",
+    "  modelkit sweep models/AIGovModel.xlsx runs/aigov.scenario.json",
+    "  modelkit sweep models/test.xlsx runs/savings.scenario.json --runs 20 --seed abc",
   ].join("\n"),
 
   async run(args, ctx) {
     const { flags, positional } = parse(args);
-    const [modelFile, settingsFile] = positional;
-    if (!modelFile || !settingsFile || flags.steps === undefined) {
+    const [modelFile, scenarioFile] = positional;
+    if (!modelFile || !scenarioFile) {
       console.error(sweep.usage);
       return 1;
     }
 
-    const length = whole(flags.steps, "steps", 0);
     const runs = flags.runs === undefined ? 100 : whole(flags.runs, "runs", 1);
 
     // One seed for the sweep, one derived seed per run: the sweep reproduces whole,
     // and any single row of it reproduces on its own.
     const seed = flags.seed ?? String(Date.now());
-    const settings = await loadSettings(resolve(ctx.cwd, settingsFile));
+    const { simulation, settings, stepCount: length } = await loadScenario(
+      resolve(ctx.cwd, scenarioFile)
+    );
 
     // Parsing the workbook is a one-off the whole sweep shares, so it is timed apart
     // from the runs — otherwise a short sweep looks slower per run than a long one.
@@ -70,16 +73,8 @@ export const sweep = {
     const driver = await createLocalDriver({ modelPath: resolve(ctx.cwd, modelFile) });
     const load = performance.now() - started;
 
-    if (!driver.schema.has(SIMULATION_ID)) {
-      throw new Error(
-        `${driver.modelFile} has no '${SIMULATION_ID}' named range, so which simulation it implements is unknown`
-      );
-    }
-    const simulation = driver.readFromFile(SIMULATION_ID);
-    const rules = rulesFor(simulation);
-
     // Everything decidable from the request alone, decided once rather than `runs` times.
-    assertDeclaration({ simulation, stepCount: length, settings }, rules);
+    const rules = preflight(driver, { simulation, stepCount: length, settings });
 
     const columns = [ID, "seed", "steps", ...rules.settings, ...rules.results];
     const directory = resolve(ctx.cwd, flags.out ?? stamp());
@@ -102,10 +97,10 @@ export const sweep = {
       });
 
       if (violations.length > 0) {
-        // Every run of a sweep shares its settings and its length, so a violation on
-        // the first one is a property of the request rather than of the draw — a
-        // `--steps` the settings contradict, say, which only `checkStep` can see.
-        // Later ones are a sampler bug in one draw, and 99 good runs outlive it.
+        // Every run of a sweep shares one scenario, so a violation on the first one is
+        // a property of the request rather than of the draw — a `stepCount` its own
+        // settings contradict, say, which only `checkStep` can see. Later ones are a
+        // sampler bug in one draw, and 99 good runs outlive it.
         if (index === 0) {
           throw new Error(
             `${describe(violations)}\n\nthe first run of the sweep is invalid, so every run would be`

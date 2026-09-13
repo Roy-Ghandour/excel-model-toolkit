@@ -1,10 +1,10 @@
 import { resolve } from "node:path";
-import { loadSettings, parse, whole } from "../cli/args.js";
+import { parse } from "../cli/args.js";
 import { generate } from "../core/generate.js";
 import { createRng } from "../core/rng.js";
-import { assertDeclaration, writeRunFile } from "../core/runFile.js";
-import { SIMULATION_ID } from "../core/simulation.js";
-import { rulesFor } from "../simulations/registry.js";
+import { writeRunFile } from "../core/runFile.js";
+import { loadScenario } from "../core/scenario.js";
+import { preflight } from "../core/simulation.js";
 import { assertValid } from "../core/violations.js";
 import { createLocalDriver } from "../drivers/local/localDriver.js";
 
@@ -15,54 +15,43 @@ export const sample = {
   name: "sample",
   summary: "Generate a random valid run file for a model",
   usage: [
-    "usage: modelkit sample <model.xlsx> <settings.json> --steps <n> [--seed <s>] [--out <file>]",
+    "usage: modelkit sample <model.xlsx> <scenario.json> [--seed <s>] [--out <file>]",
     "",
     "Plays the model at random, choosing only what the simulation's rules allow, and",
     "writes the result as a run file. Prints to stdout unless --out is given.",
     "",
-    "  --steps   how many steps to generate, including the simulation's own setup turn",
+    "The scenario file carries the settings and how many steps the run has; see",
+    "docs/scenario-file.md.",
+    "",
     "  --seed    number or text; the same seed and model reproduce the same run",
     "  --out     write the run file here instead of stdout",
     "",
-    "  modelkit sample models/AIGovModel.xlsx runs/aigov.settings.json --steps 6 --seed 1",
+    "  modelkit sample models/AIGovModel.xlsx runs/aigov.scenario.json --seed 1",
   ].join("\n"),
 
   async run(args, ctx) {
     const { flags, positional } = parse(args);
-    const [modelFile, settingsFile] = positional;
-    if (!modelFile || !settingsFile || flags.steps === undefined) {
+    const [modelFile, scenarioFile] = positional;
+    if (!modelFile || !scenarioFile) {
       console.error(sample.usage);
       return 1;
     }
-
-    const length = whole(flags.steps, "steps", 0);
 
     // A recorded seed is what makes a run reproducible, so an unspecified one is
     // chosen here rather than left to chance inside the generator. Kept as text: the
     // rng hashes it either way, and the run file records exactly what was typed.
     const seed = flags.seed ?? String(Date.now());
-    const settings = await loadSettings(resolve(ctx.cwd, settingsFile));
+    const scenario = await loadScenario(resolve(ctx.cwd, scenarioFile));
     const driver = await createLocalDriver({ modelPath: resolve(ctx.cwd, modelFile) });
 
-    if (!driver.schema.has(SIMULATION_ID)) {
-      throw new Error(
-        `${driver.modelFile} has no '${SIMULATION_ID}' named range, so which simulation it implements is unknown`
-      );
-    }
-    const simulation = driver.readFromFile(SIMULATION_ID);
-    const rules = rulesFor(simulation);
-
-    // The same declaration check every run file faces, applied to what this tool was
-    // asked to make — so an impossible request is refused before a model is driven.
-    assertDeclaration(
-      { simulation, stepCount: length, settings },
-      rules
-    );
+    // A scenario is a run file without its decisions, so it faces the same checks a
+    // run file does — and an impossible request is refused before a model is driven.
+    const rules = preflight(driver, scenario);
 
     const { runFile, violations } = await generate(driver, {
-      simulation,
-      settings,
-      length,
+      simulation: scenario.simulation,
+      settings: scenario.settings,
+      length: scenario.stepCount,
       rules,
       rng: createRng(seed),
       origin: { tool: "sample", seed },

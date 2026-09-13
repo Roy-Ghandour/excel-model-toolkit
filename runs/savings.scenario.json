@@ -1,0 +1,11 @@
+{
+  "modelkit": 1,
+  "simulation": "savings",
+
+  "stepCount": 8,
+
+  "settings": {
+    "initialBalance": 500,
+    "interestRate": 0.05
+  }
+}

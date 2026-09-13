@@ -21,6 +21,9 @@ knows what the values _mean_ lives in the injected policy layer, never here.
 `[run-file.example.jsonc](run-file.example.jsonc)` **is the canonical example** —
 every field, annotated. Read it first; this document is the contract behind it.
 
+A run file without its `steps` is a `[scenario file](../scenario-file.md)`: what
+a tool that generates decisions is handed, rather than one that replays them.
+
 ## Fields
 
 | Field           | Required                          | Type             | Meaning                                                                               |
@@ -134,8 +137,8 @@ in the hash, so including it would change the pinned recipe and buy nothing.
   versus v2" would be two ids with nothing to join on.
 - Key order cannot change an id: `{a:1,b:2}` and `{b:2,a:1}` are the same run.
   Array order can and must, because in `steps` the order _is_ the timeline.
-- Identical decisions collide by construction, so detecting a duplicate scenario
-  in a sweep costs nothing.
+- Identical decisions collide by construction, so detecting a duplicate run in a
+  sweep costs nothing.
 
 Generated run files always carry an `id`. Hand-written ones may omit it — writing a
 run file by hand should not require computing a hash first — and it is derived on

@@ -55,11 +55,7 @@ export const execute = {
     console.log("  ----   ---------");
     if (trace.steps.length === 0) console.log("  (none - base state)");
     for (const taken of trace.steps) {
-      console.log(
-        `  ${String(taken.state.Step ?? taken.step + 1).padStart(
-          4
-        )}   ${decisions(taken.writes)}`
-      );
+      console.log(`  ${String(taken.step).padStart(4)}   ${decisions(taken.writes)}`);
     }
 
     // The full final state rather than a chosen few: which ranges matter is a

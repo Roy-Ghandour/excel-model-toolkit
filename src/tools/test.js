@@ -109,7 +109,7 @@ export const test = {
     console.log("  ----   ---------");
     if (run.steps.length === 0) console.log("  (none - base state)");
     run.steps.forEach((writes, step) =>
-      console.log(`  ${String(step + 1).padStart(4)}   ${decisions(writes)}`)
+      console.log(`  ${String(step).padStart(4)}   ${decisions(writes)}`)
     );
 
     const local = await timedReplay(

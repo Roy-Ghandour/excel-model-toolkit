@@ -150,10 +150,17 @@ Two implementations exist:
   wide), `initialBalance` and `interestRate`, and no step rules. A test workbook with
   no simulation behind it, registered so that "no rules" is distinct from "simulation
   modelkit has never heard of".
-- **`aigov`** (`models/AIGovModel.xlsx`): 4 to 7 steps, five settings, and two step
-  rules — `{Ec,Env,Def,Edu}Slider{1,2}` is a whole number from 0 to 3, and the run is
-  `NumYears + 1` steps long. The rest — availability, budget, and what the interface
-  enforces — is added with the lead dev.
+- **`aigov`** (`models/AIGovModel.xlsx`): 4 to 7 steps, five settings, and the full
+  ruleset — availability, the budget, cancellation, dilemma timing, ministries in
+  play. Catalogued in **[docs/simulations/aigov.md](../../simulations/aigov.md)**,
+  with the evidence in the model for each rule.
+
+  Its **step 0 is a setup turn**, carrying only the value ranking. Column 0 of every
+  AI-Gov timeline is the model's baseline year — no budget, policies still locked —
+  and the live sim never writes it, so years 1…NumYears are steps 1…NumYears. That is
+  why a run is `NumYears + 1` steps. One consequence, measured and accepted: the setup
+  turn spends a `step()`, so a finished run reports `GameOver` as 0 while every
+  timeline is identical to a run without it.
 
 ### Neighbours cascade
 
@@ -208,13 +215,19 @@ the check costs nothing and `simulate` stays free of it.
    `minSteps`, `maxSteps`, `settings`. Checked by `assertDeclaration` inside
    `preflight`, before any model is driven. AI-Gov's `NumYears + 1` length rule is in
    `checkStep`.
+2.6. **AI-Gov's rules.** ✅ 2026-09-13. The full ruleset, from a study of the live sim
+   and the workbook: [docs/simulations/aigov.md](../../simulations/aigov.md). Also
+   settles what a step *means* for AI-Gov (step 0 is setup), and moves printed step
+   numbers to 0-based so the run-file index, the model column and the violation all
+   agree.
 3. **Sample.** Random valid runs: a `sample` that feeds `decide`.
 4. **Neighbours.** `mutate` and reject-or-repair, with the optimiser.
 
 ## Open, resolved when their step arrives
 
-- Which AI-Gov constraints the model computes and which only the interface
-  enforces. Settled rule by rule with the lead dev.
+- Which further AI-Gov constraints the interface enforces that the model does not.
+  Settled rule by rule with the lead dev; what is settled so far is in
+  [the catalogue](../../simulations/aigov.md).
 - Which settings AI-Gov's list should hold beyond `NumYears` and the four ministry
   `*Enabled` switches. Nothing else matters yet; the rest of `defaultSimSettings`
   is added as a rule starts depending on it.

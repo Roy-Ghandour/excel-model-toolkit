@@ -95,8 +95,14 @@ for i in 0 .. steps.length-1:
     step()
 ```
 
-- **The array index is the step.** `steps[0]` is written at step 0. There is no
-  separate step number to contradict the ordering.
+- **The array index is the step, and the step is the model column.** `steps[0]` is
+  written at step 0, which lands in column 0 of every timeline it touches. There is no
+  separate step number to contradict the ordering, and none to translate.
+- **What a step _means_ is the simulation's business.** For savings, step 0 is an
+  ordinary transaction. For AI-Gov, column 0 is the model's baseline year, so step 0
+  is a setup turn carrying only the value ranking and the years run from step 1 — see
+  `[the AI-Gov catalogue](../simulations/aigov.md)`. The format has no opinion; the
+  simulation's rules do.
 - `steps.length` **is what executes.** `stepCount` declares the same number
   redundantly, so a file truncated in transit or edited by hand is caught before
   anything runs, rather than replaying happily as a shorter run than anyone meant.

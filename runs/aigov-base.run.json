@@ -18,5 +18,19 @@
 
   "stepCount": 6,
 
-  "steps": [{}, {}, {}, {}, {}, {}]
+  "steps": [
+    {
+      "Value1Position": 1,
+      "Value2Position": 2,
+      "Value3Position": 3,
+      "Value4Position": 4,
+      "Value5Position": 5,
+      "Value6Position": 6
+    },
+    {},
+    {},
+    {},
+    {},
+    {}
+  ]
 }

@@ -1,7 +1,7 @@
 {
   "modelkit": 1,
 
-  "label": "EcSlider1 varied over a three-year run (range 0-3): 1, 3, 0, 2",
+  "label": "EcSlider1 varied over four years (range 0-3): 1, 3, 0, 2",
   "simulation": "aigov",
 
   "model": {
@@ -9,16 +9,24 @@
   },
 
   "settings": {
-    "NumYears": 3,
+    "NumYears": 4,
     "EcEnabled": 1,
     "EnvEnabled": 1,
     "DefEnabled": 1,
     "EduEnabled": 1
   },
 
-  "stepCount": 4,
+  "stepCount": 5,
 
   "steps": [
+    {
+      "Value1Position": 1,
+      "Value2Position": 2,
+      "Value3Position": 3,
+      "Value4Position": 4,
+      "Value5Position": 5,
+      "Value6Position": 6
+    },
     { "EcSlider1": 1 },
     { "EcSlider1": 3 },
     { "EcSlider1": 0 },

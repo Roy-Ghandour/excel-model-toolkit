@@ -5,9 +5,8 @@
  * and a tool decides what to do with them — refuse here, or report them its own way.
  */
 
-/** One violation. Steps count from 1, as the tools' step tables do. */
-const line = ({ step, name, reason }) =>
-  `  step ${step + 1} · ${name} · ${reason}`;
+/** One violation. Steps count from 0: the run file's index, and the model's column. */
+const line = ({ step, name, reason }) => `  step ${step} · ${name} · ${reason}`;
 
 /**
  * Every violation, as one message.

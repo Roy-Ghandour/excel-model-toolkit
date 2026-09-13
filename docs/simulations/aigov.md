@@ -218,6 +218,56 @@ The walk cannot get stuck because **every item's cheapest option is free** — s
 level 0 costs 0, and a policy can always be left alone. However little is left, a legal
 choice remains, which is the structural reason no draw is ever wasted.
 
+## Changing a run into a neighbouring one
+
+`maximize` and `minimize` ([docs/optimising.md](../optimising.md)) walk from one run to
+a similar one, which needs two more views of the same rules:
+
+- **`mutate`** — one decision changed, the rest of the year kept where it still fits.
+- **`repair`** — a year's decisions replayed into a state that has moved underneath
+  them, drifting as little as they can.
+
+Both go through the same allocator `sample` does, because all three need the same pot
+arithmetic and would otherwise keep three copies of it that drift apart. What varies
+is only how much opinion the caller brings: none (`sample`), the incumbent's
+(`repair`), or the incumbent's with one item held fixed (`mutate`).
+
+### The move set
+
+A *move* is one item at one value it does not currently hold, so a slider offers up to
+three and a policy exactly one. Picking uniformly over these picks uniformly over the
+run's neighbours — picking over *items* instead would make a four-position slider as
+likely to change as a binary policy.
+
+| Where | Moves |
+|---|---|
+| step 0 | two of the six values trade places |
+| a slider | any of the other three levels the pot affords |
+| policy, `Show` 0 | select it, or stop selecting it |
+| policy, `Show` 1 and cancellable | cancel it, or stop cancelling it |
+| the year's dilemma | the other answer |
+
+"Stop selecting" and "stop cancelling" are moves to **unwrite** an item, not to write a
+0 — only what changes is ever written, so the absence *is* the decision.
+
+A year can have no moves at all: every ministry disabled and no dilemma that year. The
+mutation declines, and the search tries a different step.
+
+### What repair drops first
+
+The changed item is pinned and paid before anything else claims the pot, so its
+affordability is judged against the whole budget. Everything else then falls back, in
+order of how little it drifts:
+
+- a **slider** whose level no longer fits drops to the dearest level below it that
+  does — never to a fresh draw. Level 0 is free, so this always lands
+- a **selection** that no longer fits, or whose `Show` has left `{0,1}`, is dropped
+- a **cancel** of a policy that is no longer both active and cancellable is dropped
+
+Nothing else is re-randomised. That is precisely what keeps a mutation local: one
+decision differs because the search chose it to, and the rest of the run differs only
+where the model left no choice.
+
 ## What a sweep reports
 
 `results` is **the model's Results sheet**, 35 of its 37 named ranges, listed

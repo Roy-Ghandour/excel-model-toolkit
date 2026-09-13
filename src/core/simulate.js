@@ -22,6 +22,12 @@
  * `sample` draws only from the legal set, which is why generation needs no
  * draw-and-reject loop; `checkStep` stays on while it does, as an assertion.
  *
+ * `repair` and `mutate` ask it a third and fourth way, for a search that walks from
+ * one run to a neighbouring one. Where `sample` asks *what is legal here* and
+ * `checkStep` asks *was that legal*, `repair` asks *this was legal somewhere else —
+ * what is the nearest thing that is legal here*, and `mutate` asks *what else could
+ * have been chosen here*. Both draw only from the legal set, exactly as `sample` does.
+ *
  * `results` is the other half of `settings`: the named ranges an export carries out,
  * where `settings` are the ones a run carries in. Which ranges are worth reporting is
  * as simulation-specific as which decisions are legal, so it lives here rather than in
@@ -34,6 +40,8 @@
  * @property {string[]} results The named ranges an export reports, in column order.
  * @property {(step: { step: number, length: number, writes: object, before: object, after: object }) => Array<{ name: string, reason: string }>} checkStep Returns a violation per illegal decision.
  * @property {(step: number, state: object, rng: import('./rng.js').Rng) => Record<string, number>} [sample] Invents one step's writes. Absent, the simulation cannot be generated.
+ * @property {(step: number, state: object, writes: Record<string, number>, rng: import('./rng.js').Rng) => Record<string, number> | null} [mutate] Changes exactly one decision in a step's writes, keeping the rest where it still can. Returns null when the step holds no decision to change. Absent, the simulation cannot be optimised.
+ * @property {(step: number, state: object, writes: Record<string, number>, rng: import('./rng.js').Rng) => Record<string, number>} [repair] The given writes, made legal in the state now in front of them, drifting as little as it can. Re-randomises nothing. Absent, the simulation cannot be optimised.
  * @property {(rng: import('./rng.js').Rng) => Record<string, number>} [randomSettings] Draws one legal settings map, exactly the keys in `settings`.
  */
 

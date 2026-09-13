@@ -64,6 +64,28 @@ A run whose decisions break its simulation's rules is skipped rather than writte
 
 The last line reports how long the sweep took, split into parsing the workbook — a one-off the whole sweep shares — and the per-run mean, which is the figure that predicts a larger sweep. AIGovModel runs at roughly **0.3s per 6-step run**, so 100 runs take about half a minute. Runs with ministries switched off are faster again, since there is less to decide.
 
+### `maximize` and `minimize`
+
+Searches for the run that drives one named range as high, or as low, as it will go — hill-climbing with simulated annealing, restarted so that one local optimum cannot pass for the global one. The best run comes out as an ordinary [run file](docs/runFile/run-file.md).
+
+```sh
+modelkit maximize models/AIGovModel.xlsx runs/aigov.scenario.json TrustInGovernment
+modelkit minimize models/AIGovModel.xlsx runs/aigov.scenario.json JobsDisplaced --out runs/fewest-jobs-lost.run.json
+```
+
+| Flag | Meaning |
+|---|---|
+| `--iterations` | candidates per restart. Default 200 |
+| `--restarts` | independent searches, each from a fresh random run. Default 3 |
+| `--seed` | number or text. The same seed and model reproduce the whole search |
+| `--out` | write the best run file here instead of stdout |
+
+Any named range the model has is a legal objective, not only the ones a sweep reports, and it is read at the run's last step like every other result.
+
+**One candidate costs one full run of the model**, so the budget is roughly `iterations × restarts` — the default 623 runs take about three minutes on AIGovModel. Nothing is written until the search finishes, so an interrupted one leaves no artifacts.
+
+The last line reports what share of **downhill** moves the search took, which is how you tell whether it did what it says: near 100% means it ran too hot and was a random walk, near 0% means it never explored past the first hill. Before the search starts it also says how often a single decision moves your objective at all — some are far more sensitive than others. See [docs/optimising.md](docs/optimising.md) for both.
+
 ## Developing
 
 You don't need a build to work on modelkit. This runs the same code from source:

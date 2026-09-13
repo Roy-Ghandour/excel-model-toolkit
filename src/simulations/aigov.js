@@ -207,6 +207,10 @@ function sampleSetup(rng) {
   );
 }
 
+/** What a policy costs to select this year. `Type` gates the price; see aigov.md. */
+const policyCost = (state, name) =>
+  state[`${name}Type`] === 1 ? state[`${name}CostValue`] : 1;
+
 /**
  * One ministry's year, spent out of a budget the model has already worked out.
  *
@@ -220,27 +224,66 @@ function sampleSetup(rng) {
  * Every item's cheapest option — slider level 0, a policy left alone — is free, so
  * however little is left there is always a legal choice and the walk cannot get
  * stuck. That is why one pass yields a valid year and nothing has to be redrawn.
+ *
+ * **One allocator serves three callers**, because all three need this same pot and
+ * would otherwise keep three copies of it that drift apart:
+ *
+ * - `preferred` **null** — decide freely. This is `sample`, and its draws from `rng`
+ *   are exactly the ones it made before the other two callers existed.
+ * - `preferred` **an object** — the incumbent's writes for this step, being replayed
+ *   into a state that has moved. Honour each one, falling back only where the state
+ *   no longer allows it. **An absent name is an opinion, not a gap**: only what
+ *   *changes* is ever written, so a policy missing from the map is one the incumbent
+ *   deliberately left to carry forward. Nothing here is re-randomised — that is what
+ *   keeps a mutation local.
+ * - `pinned` — the one item a mutation fixed. Paid before anything competes for the
+ *   pot, so its affordability is decided against the whole budget. A pinned value of
+ *   `null` means *fixed to unwritten*, which is how "stop selecting this" and "stop
+ *   cancelling this" are expressed, neither of them being a write.
  */
-function sampleMinistry({ ministry, step, state, rng, writes }) {
+function allocate({ ministry, step, state, rng, writes, preferred, pinned }) {
   let pot = state[`${ministry}AvaialbleToAllocate`][step];
+  const fixed = (name) => pinned !== null && name in pinned;
 
-  const available = [];
-  for (let number = 3; number <= LAST_POLICY[ministry]; number++) {
-    const name = `${ministry}Pro${number}`;
-    const show = state[`${name}Show`][step];
-
-    if (show === 0) available.push(name);
-    // Cancelling is a player's move, and it stops next year's recurring charge, so
-    // the money it frees is spendable this year.
-    else if (show === 1 && state[`${name}CanCancel`] === 1 && rng.chance()) {
-      writes[name] = 0;
-      pot += state[`${name}CostRecurringValue`];
+  // The mutation's own choice, before anything else can spend the pot out from
+  // under it.
+  if (pinned !== null) {
+    for (const [name, value] of Object.entries(pinned)) {
+      if (value === null || !name.startsWith(ministry)) continue;
+      writes[name] = value;
+      if (SLIDER.test(name)) pot -= state.SliderCosts[value];
+      else if (value === 1) pot -= policyCost(state, name);
+      else pot += state[`${name}CostRecurringValue`];
     }
   }
 
-  const sliders = [`${ministry}Slider1`, `${ministry}Slider2`];
+  // Cancelling is a player's move, and it stops next year's recurring charge, so the
+  // money it frees is spendable this year — which is why it settles before the walk.
+  const available = [];
+  for (let number = 3; number <= LAST_POLICY[ministry]; number++) {
+    const name = `${ministry}Pro${number}`;
+    if (fixed(name)) continue;
+    const show = state[`${name}Show`][step];
 
-  // Shuffled so no item has a standing claim on the budget ahead of another.
+    if (show === 0) available.push(name);
+    else if (show === 1 && state[`${name}CanCancel`] === 1) {
+      // A cancel the incumbent made is still a cancel if the policy is still active
+      // and still cancellable; otherwise it is simply dropped.
+      const cancel = preferred === null ? rng.chance() : preferred[name] === 0;
+      if (cancel) {
+        writes[name] = 0;
+        pot += state[`${name}CostRecurringValue`];
+      }
+    }
+  }
+
+  const sliders = [`${ministry}Slider1`, `${ministry}Slider2`].filter(
+    (name) => !fixed(name)
+  );
+
+  // Shuffled so no item has a standing claim on the budget ahead of another. That
+  // matters for a repair too: when the pot has shrunk, something must lose, and
+  // nothing should lose merely for sorting late.
   for (const name of rng.shuffle([...sliders, ...available])) {
     if (sliders.includes(name)) {
       // Sliders do not carry forward, so each year states its own level. Position in
@@ -248,12 +291,21 @@ function sampleMinistry({ ministry, step, state, rng, writes }) {
       const levels = state.SliderCosts.flatMap((cost, level) =>
         cost <= pot ? [level] : []
       );
-      const level = rng.pick(levels);
+      // A level that no longer fits falls to the dearest one below it that does,
+      // rather than to a fresh draw. Level 0 is free, so this always lands.
+      const level =
+        preferred === null
+          ? rng.pick(levels)
+          : Math.min(preferred[name] ?? 0, levels.at(-1));
       writes[name] = level;
       pot -= state.SliderCosts[level];
     } else {
-      const cost = state[`${name}Type`] === 1 ? state[`${name}CostValue`] : 1;
-      if (cost <= pot && rng.chance()) {
+      const cost = policyCost(state, name);
+      const take =
+        preferred === null
+          ? cost <= pot && rng.chance()
+          : preferred[name] === 1 && cost <= pot;
+      if (take) {
         writes[name] = 1;
         pot -= cost;
       }
@@ -266,24 +318,91 @@ function sampleMinistry({ ministry, step, state, rng, writes }) {
  *
  * Only what *changes* is written. An untouched policy carries forward on the model's
  * own formula, and re-writing `1` over an active one costs nothing and says nothing.
+ *
+ * `preferred` and `pinned` mean what they mean in `allocate`. All of `sample`,
+ * `repair` and `mutate` come through here.
  */
-function sampleYear(step, state, rng) {
+function decideYear(step, state, rng, preferred = null, pinned = null) {
   const writes = {};
 
   for (const ministry of MINISTRIES) {
     if (state[`${ministry}Enabled`] === 0) continue;
-    sampleMinistry({ ministry, step, state, rng, writes });
+    allocate({ ministry, step, state, rng, writes, preferred, pinned });
   }
 
   // Both answers are answers — 0 latches the dilemma to −1, 1 to 1 — so a player
-  // always gives one.
+  // always gives one. The year a dilemma fires is fixed by the model, so an
+  // incumbent's answer is always still an answer to the same question.
   for (const number of DILEMMAS) {
-    if (state[`Op${number}Year`][step] === 1) {
-      writes[`Op${number}Selected`] = rng.chance() ? 1 : 0;
-    }
+    if (state[`Op${number}Year`][step] !== 1) continue;
+    const name = `Op${number}Selected`;
+
+    if (pinned !== null && name in pinned) writes[name] = pinned[name];
+    else if (preferred !== null) writes[name] = preferred[name];
+    else writes[name] = rng.chance() ? 1 : 0;
   }
 
   return writes;
+}
+
+/**
+ * Every decision one year could have gone differently, as `{ name, value }` pairs.
+ *
+ * A *move* is one item at one value it does not currently hold, so a slider offers up
+ * to three and a policy exactly one — picking uniformly over these is picking
+ * uniformly over the run's neighbours, rather than over the items, which would make a
+ * four-position slider as likely to change as a binary policy.
+ *
+ * `value: null` is the move to *unwrite* an item, which is how "stop selecting this"
+ * and "stop cancelling this" are expressed: neither is a write, because only what
+ * changes is ever written.
+ *
+ * Affordability is judged against the ministry's whole pot, which is exact: a pinned
+ * item is paid before anything else can claim it.
+ */
+function moves(step, state, writes) {
+  const found = [];
+
+  for (const ministry of MINISTRIES) {
+    if (state[`${ministry}Enabled`] === 0) continue;
+    const pot = state[`${ministry}AvaialbleToAllocate`][step];
+
+    for (const name of [`${ministry}Slider1`, `${ministry}Slider2`]) {
+      const level = writes[name] ?? 0;
+      state.SliderCosts.forEach((cost, other) => {
+        if (other !== level && cost <= pot) found.push({ name, value: other });
+      });
+    }
+
+    for (let number = 3; number <= LAST_POLICY[ministry]; number++) {
+      const name = `${ministry}Pro${number}`;
+      const show = state[`${name}Show`][step];
+      const written = name in writes;
+
+      // Available: select it, or stop selecting it.
+      if (show === 0 && (written || policyCost(state, name) <= pot)) {
+        found.push({ name, value: written ? null : 1 });
+      }
+      // Active and cancellable: cancel it, or stop cancelling it.
+      else if (show === 1 && state[`${name}CanCancel`] === 1) {
+        found.push({ name, value: written ? null : 0 });
+      }
+    }
+  }
+
+  for (const number of DILEMMAS) {
+    if (state[`Op${number}Year`][step] !== 1) continue;
+    const name = `Op${number}Selected`;
+    found.push({ name, value: writes[name] === 1 ? 0 : 1 });
+  }
+
+  return found;
+}
+
+/** The setup turn's one move: two values trade places in the ranking. */
+function mutateSetup(writes, rng) {
+  const [first, second] = rng.shuffle(RANKINGS).slice(0, 2);
+  return { ...writes, [first]: writes[second], [second]: writes[first] };
 }
 
 /** @type {import('../core/simulate.js').Rules} */
@@ -374,7 +493,37 @@ export const aigov = {
   },
 
   sample(step, state, rng) {
-    return step === 0 ? sampleSetup(rng) : sampleYear(step, state, rng);
+    return step === 0 ? sampleSetup(rng) : decideYear(step, state, rng);
+  },
+
+  /**
+   * One decision changed, and the rest of the year kept wherever it still fits.
+   *
+   * The changed item is pinned and paid first, then the year is re-allocated around
+   * it — so a costlier choice pushes something else out rather than breaking the
+   * budget, and a cheaper one leaves the freed money unspent rather than redrawing.
+   *
+   * Null when the year holds no decision at all, which a run with every ministry
+   * disabled and no dilemma that year really does.
+   */
+  mutate(step, state, writes, rng) {
+    if (step === 0) return mutateSetup(writes, rng);
+
+    const available = moves(step, state, writes);
+    if (available.length === 0) return null;
+
+    const { name, value } = rng.pick(available);
+    return decideYear(step, state, rng, writes, { [name]: value });
+  },
+
+  /**
+   * Last year's decisions, replayed into a year that has moved underneath them.
+   *
+   * Never called at step 0: the ranking is a permutation, legal in every state, and a
+   * mutation point is never before the first step.
+   */
+  repair(step, state, writes, rng) {
+    return decideYear(step, state, rng, writes);
   },
 
   /**

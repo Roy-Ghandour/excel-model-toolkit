@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { parse, whole } from "../cli/args.js";
+import { seconds } from "../core/format.js";
 import { generate } from "../core/generate.js";
 import { endOfRun, summarize, toCsv } from "../core/results.js";
 import { createRng } from "../core/rng.js";
@@ -18,13 +19,6 @@ const stamp = () =>
 
 /** The column the run id goes in, and the one the summary rows label themselves in. */
 const ID = "id";
-
-/** Long enough that minutes read better than a four-digit second count. */
-function seconds(ms) {
-  if (ms < 60_000) return `${(ms / 1000).toFixed(2)}s`;
-  const whole = Math.round(ms / 1000);
-  return `${Math.floor(whole / 60)}m ${String(whole % 60).padStart(2, "0")}s`;
-}
 
 /** @type {import('../cli/dispatch.js').Tool} */
 export const sweep = {

@@ -26,4 +26,10 @@ export const savings = {
 
   /** Any amount is a legal transaction, overdraft included, so nothing constrains this. */
   sample: (step, state, rng) => ({ transactionAmount: rng.int(1001) - 500 }),
+
+  /** The one decision a step has, redrawn. */
+  mutate: (step, state, writes, rng) => ({ transactionAmount: rng.int(1001) - 500 }),
+
+  /** Nothing here can become illegal, so the nearest legal writes are the given ones. */
+  repair: (step, state, writes) => writes,
 };

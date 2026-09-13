@@ -171,4 +171,59 @@ flag. Note that engine reuse makes this *worse* per worker, not better: each wor
 hold its own pooled engine, multiplying the memory pressure that already caps the curve
 above. Re-measure before building.
 
+Since 2026-09-13 [`anneal`](../src/core/anneal.js) wants this more than `sweep` does, and
+can use it less: a sweep's runs are independent, but a climb's are inherently sequential —
+each candidate is a mutation of the one before. Only the **restarts** parallelise, which
+caps the speedup at `--restarts` however many cores there are.
+
+---
+
+## Keeping more than the single best run
+
+**Decided 2026-09-13. Not built.**
+
+`maximize` and `minimize` emit one run file: the best found. A `--keep N` would emit the
+best N instead.
+
+**Why it is worth more than it looks.** A single optimum tells you the ceiling but not
+*which decisions produced it*. Five runs within a point of each other tell you which
+choices every one of them makes — those are the decisions that matter — and which vary
+freely, which are the ones that do not. That is the question anyone actually has after
+seeing an optimum, and it is a far better use of the output than the per-iteration
+convergence CSV that was considered and rejected in the same conversation.
+
+**Why deferred.** YAGNI, and it is purely additive: the search already sees every
+candidate's score, so keeping a sorted top-N costs a few lines and no extra runs.
+
+**Where it plugs in.** The `best` tracking in [`anneal`](../src/core/anneal.js) becomes a
+bounded sorted list, and [`optimise`](../src/tools/optimise.js) writes a folder rather
+than a file when `--keep` is given. Note the near-duplicate problem: consecutive accepted
+candidates often differ by one decision, so a naive top-5 can be five views of one run.
+De-duplicating by run `id` is not enough — they are genuinely different runs. Some spread
+criterion is needed, and picking one is the real work here.
+
+---
+
+## Reading fewer named ranges per step
+
+**Decided 2026-09-13. Not built.**
+
+[`simulate`](../src/core/simulate.js) defaults to reading **every** named range after
+every step — 1329 of them for AIGovModel. A search of 623 runs does that ~3700 times.
+
+**Why it is tempting.** It is where the 0.3s per run goes, now that engine rebuilds are
+gone, and a search feels the cost 623 times over where `sample` feels it once.
+
+**Why it is not obviously a win.** The rules need most of them. `sample`, `repair` and
+`mutate` read `<id>Show`, `<id>CanCancel`, `<id>CostValue`, `<id>CostRecurringValue`,
+`<id>Type` for all 49 policies, plus `SliderCosts`, four `AvaialbleToAllocate`, six
+`Op<n>Year` and the ministry flags; `checkStep` adds the four `BudgetRemaining`. The
+objective adds one more, and which one is not known until the command line is read.
+
+**Where it plugs in.** `names` is already a parameter of `simulate` and `generate`,
+threaded and unused — so the seam exists. What does not exist is a way for a simulation
+to *declare* what its rules read, which is what this needs and what makes it more than a
+one-line change. Measure first: the win is bounded by what fraction of a run is actually
+`read`, and that has not been profiled since engine reuse landed.
+
 ---

@@ -191,6 +191,26 @@ The walk cannot get stuck because **every item's cheapest option is free** — s
 level 0 costs 0, and a policy can always be left alone. However little is left, a legal
 choice remains, which is the structural reason no draw is ever wasted.
 
+## What a sweep reports
+
+`results` is **the model's Results sheet**, 35 of its 37 named ranges, listed
+literally rather than derived from the sheet at runtime — so which numbers an export
+carries is a decision in the repo, reviewable in a diff, and not a property of
+whatever workbook happens to be loaded. It is the sim's own answer to what the outcome
+of a run is, which is why the sheet is the right thing to copy and no shorter list
+was invented here.
+
+The two exceptions are `CarbonIntensityFromDataCenters` and
+`EnergyConsumedFromDataCenters`: retired KPIs still sitting on the sheet, whose cells
+hold the literal string `X` in every column. Listing them literally is exactly what
+makes dropping them a one-line diff.
+
+**A result is read at the run's last column, `length - 1`.** Step 0 is the setup turn
+at column 0, so a run of `length` steps last wrote column `length - 1`. The model still
+computes columns past that from the workbook's authored contents — real numbers, but
+not this run's — so an export that read the end of the timeline would report them, and
+would look correct on every full-length run.
+
 ## Still open
 
 Which further constraints the interface enforces that the model does not. Settled

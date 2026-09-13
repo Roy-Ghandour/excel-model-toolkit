@@ -36,7 +36,8 @@ const RANKINGS = [1, 2, 3, 4, 5, 6].map((n) => `Value${n}Position`);
 const DILEMMAS = [1, 2, 3, 4, 5, 6];
 
 /** A slider has four positions. */
-const legalSlider = (value) => Number.isInteger(value) && value >= 0 && value <= 3;
+const legalSlider = (value) =>
+  Number.isInteger(value) && value >= 0 && value <= 3;
 
 /** `<id>Show`: 2 locked, 0 available, 1 active, 3 abandoned. */
 const onScreen = (show) => show === 0 || show === 1;
@@ -62,16 +63,24 @@ function checkSetup(writes) {
 
   const missing = RANKINGS.filter((name) => !(name in writes));
   for (const name of missing) {
-    violations.push({ name, reason: "the whole value ranking is set at step 0" });
+    violations.push({
+      name,
+      reason: "the whole value ranking is set at step 0",
+    });
   }
 
   if (missing.length === 0) {
     const ranks = RANKINGS.map((name) => writes[name]);
     const distinct = new Set(ranks);
-    if (distinct.size !== 6 || ranks.some((r) => !Number.isInteger(r) || r < 1 || r > 6)) {
+    if (
+      distinct.size !== 6 ||
+      ranks.some((r) => !Number.isInteger(r) || r < 1 || r > 6)
+    ) {
       violations.push({
         name: "Value1Position",
-        reason: `the six values rank 1 to 6, once each, received: ${ranks.join(", ")}`,
+        reason: `the six values rank 1 to 6, once each, received: ${ranks.join(
+          ", "
+        )}`,
       });
     }
   }
@@ -103,12 +112,18 @@ function checkYear({ step, writes, before, after }) {
     // so nothing else would notice.
     const ministry = (slider ?? policy)?.[1];
     if (ministry && before[`${ministry}Enabled`] === 0) {
-      violations.push({ name, reason: `${ministry} is not a ministry in this run` });
+      violations.push({
+        name,
+        reason: `${ministry} is not a ministry in this run`,
+      });
       continue;
     }
 
     if (slider && !legalSlider(value)) {
-      violations.push({ name, reason: `${value} is not a whole number from 0 to 3` });
+      violations.push({
+        name,
+        reason: `${value} is not a whole number from 0 to 3`,
+      });
     }
 
     if (policy) {
@@ -133,8 +148,15 @@ function checkYear({ step, writes, before, after }) {
                 ? "has not unlocked yet"
                 : "was abandoned, and abandoning is permanent",
           });
-        } else if (value === 0 && show === 1 && before[`${name}CanCancel`] === 0) {
-          violations.push({ name, reason: "cannot be cancelled once selected" });
+        } else if (
+          value === 0 &&
+          show === 1 &&
+          before[`${name}CanCancel`] === 0
+        ) {
+          violations.push({
+            name,
+            reason: "cannot be cancelled once selected",
+          });
         }
       }
     }
@@ -167,7 +189,9 @@ function checkYear({ step, writes, before, after }) {
 /** The setup turn: a random ranking of the six values. */
 function sampleSetup(rng) {
   const ranks = rng.shuffle([1, 2, 3, 4, 5, 6]);
-  return Object.fromEntries(RANKINGS.map((name, index) => [name, ranks[index]]));
+  return Object.fromEntries(
+    RANKINGS.map((name, index) => [name, ranks[index]])
+  );
 }
 
 /**
@@ -257,6 +281,47 @@ export const aigov = {
 
   settings: ["NumYears", "EcEnabled", "EnvEnabled", "DefEnabled", "EduEnabled"],
 
+  // Every named range on the model's Results sheet, which is the sim's own answer to
+  // which numbers are the outcome. All are 9-wide timelines but `Step`. The two data
+  // centre ranges are left out: retired KPIs, still on the sheet, still reading "X".
+  results: [
+    "AIContributionToGDP",
+    "AIFDIStock",
+    "AILiteracy",
+    "Accountability",
+    "AutonomousSystemsSafteyIndex",
+    "AverageMinistryScore",
+    "CircularityIndex",
+    "CybersecurityIndex",
+    "DefenseExports",
+    "DefenseImports",
+    "DefenseScore",
+    "EconomyScore",
+    "EcosystemIntegrityIndex",
+    "EducationScore",
+    "EnvironmentScore",
+    "EwasteCircularityIndex",
+    "GrowthWB",
+    "GrowthWellBeing",
+    "HumanRights",
+    "InnovationIndex",
+    "InstitutionalAdoptionRate",
+    "JobsCreated",
+    "JobsDisplaced",
+    "MilitaryTechnologyTradeBalance",
+    "NetJobsFromAI",
+    "PrivacyDP",
+    "PrivacyDataProtection",
+    "RenewableEnergyFactor",
+    "SecuritySafety",
+    "Step",
+    "Time",
+    "Transparency",
+    "TrustInGovernment",
+    "WaterCircularityIndex",
+    "Year",
+  ],
+
   checkStep({ step, length, writes, before, after }) {
     if (step > 0) return checkYear({ step, writes, before, after });
 
@@ -279,4 +344,17 @@ export const aigov = {
   sample(step, state, rng) {
     return step === 0 ? sampleSetup(rng) : sampleYear(step, state, rng);
   },
+
+  /**
+   * The facilitator's own choices, drawn at random: how many years, and which
+   * ministries are in play. All four may come up disabled — the sim allows a run where
+   * only the ranking and the dilemmas move.
+   */
+  randomSettings: (rng) => ({
+    NumYears: 3 + rng.int(4),
+    EcEnabled: rng.chance() ? 1 : 0,
+    EnvEnabled: rng.chance() ? 1 : 0,
+    DefEnabled: rng.chance() ? 1 : 0,
+    EduEnabled: rng.chance() ? 1 : 0,
+  }),
 };

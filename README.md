@@ -38,7 +38,31 @@ modelkit sample models/AIGovModel.xlsx runs/aigov.settings.json --steps 6 --out 
 | `--seed` | number or text. The same seed and model reproduce the same run |
 | `--out` | write the run file here instead of stdout |
 
-The settings file is a plain JSON map of named range to number, and must declare exactly the settings its simulation names. A model whose simulation has no sampler — `models/test.xlsx` — is refused.
+The settings file is a plain JSON map of named range to number, and must declare exactly the settings its simulation names.
+
+### `sweep`
+
+`sample` many times over, into a folder: one run file per run, plus a `sweep.csv` holding each run's id and the results its simulation reports.
+
+```sh
+modelkit sweep models/AIGovModel.xlsx runs/aigov.settings.json --steps 6
+modelkit sweep models/test.xlsx runs/savings.settings.json --steps 8 --runs 20 --seed abc
+```
+
+| Flag | Meaning |
+|---|---|
+| `--steps` | how many steps each run has, including the simulation's own setup turn |
+| `--runs` | how many runs to generate. Default 100 |
+| `--seed` | number or text. The same seed, model and settings reproduce the whole sweep |
+| `--out` | write the folder here instead of `./sweep-<timestamp>` |
+
+Each run also gets its own seed, `<seed>/<index>`, recorded in the run file's `origin` and in the CSV — so any single row reproduces on its own.
+
+**Every result is read at the run's last step.** A model computes its whole horizon whatever the run's length, so the columns past the end of a short run hold the workbook's authored defaults rather than anything the run did; the CSV never reports those. Numbers are rounded to at most two decimals, and the last three rows are the `max`, `min` and `average` of every column.
+
+A run whose decisions break its simulation's rules is skipped rather than written, and the exit code is 1 if anything was skipped. The exception is the first run: every run of a sweep shares its settings and length, so if that one is invalid the request itself is, and the sweep stops there instead of repeating the mistake 99 more times.
+
+The last line reports how long the sweep took, split into parsing the workbook — a one-off the whole sweep shares — and the per-run mean, which is the figure that predicts a larger sweep. AIGovModel runs at roughly **0.3s per 6-step run**, so 100 runs take about half a minute. Runs with ministries switched off are faster again, since there is less to decide.
 
 ## Developing
 

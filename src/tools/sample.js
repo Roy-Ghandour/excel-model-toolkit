@@ -1,5 +1,5 @@
-import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { loadSettings, parse, whole } from "../cli/args.js";
 import { generate } from "../core/generate.js";
 import { createRng } from "../core/rng.js";
 import { assertDeclaration, writeRunFile } from "../core/runFile.js";
@@ -9,27 +9,6 @@ import { assertValid } from "../core/violations.js";
 import { createLocalDriver } from "../drivers/local/localDriver.js";
 
 /** Generate one random, valid run of whatever simulation a model implements. */
-
-/** Read the settings file: a plain map of named range to number, nothing more. */
-async function loadSettings(path) {
-  const source = await readFile(path, "utf8");
-  try {
-    return JSON.parse(source);
-  } catch (error) {
-    throw new Error(`${path} is not valid JSON: ${error.message}`);
-  }
-}
-
-/** Pull `--flag value` pairs off the command line, leaving the positional arguments. */
-function parse(args) {
-  const flags = {};
-  const positional = [];
-  for (let i = 0; i < args.length; i++) {
-    if (args[i].startsWith("--")) flags[args[i].slice(2)] = args[++i];
-    else positional.push(args[i]);
-  }
-  return { flags, positional };
-}
 
 /** @type {import('../cli/dispatch.js').Tool} */
 export const sample = {
@@ -56,10 +35,7 @@ export const sample = {
       return 1;
     }
 
-    const length = Number(flags.steps);
-    if (!Number.isInteger(length) || length < 0) {
-      throw new Error(`--steps must be a whole number of steps, received: ${flags.steps}`);
-    }
+    const length = whole(flags.steps, "steps", 0);
 
     // A recorded seed is what makes a run reproducible, so an unspecified one is
     // chosen here rather than left to chance inside the generator. Kept as text: the

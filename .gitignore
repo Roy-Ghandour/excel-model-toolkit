@@ -13,6 +13,7 @@ out/
 # --- Sweep output (CSV/XLSX exports are analysis artifacts, not source) ---
 output/
 results/
+sweep-*/
 
 # --- Claude Code local state ---
 .claude/settings.local.json

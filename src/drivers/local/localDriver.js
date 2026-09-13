@@ -32,6 +32,13 @@ const ENGINE_OPTIONS = {
 };
 
 /**
+ * How many rewound engines to keep for reuse. An engine of AIGovModel is ~460MB, and
+ * runs are driven one at a time, so one is the number that matters; the rest is slack
+ * for a caller driving several at once.
+ */
+const IDLE_LIMIT = 4;
+
+/**
  * The named ranges to register with the engine, as `[name, shape]` pairs.
  *
  * HyperFormula refuses any name shaped like a cell address — letters then digits,
@@ -100,6 +107,14 @@ export async function createLocalDriver({ modelPath }) {
   }
 
   /**
+   * Engines rewound by `dispose` and ready to be handed out again.
+   *
+   * A run takes one for its lifetime and gives it back, so this is never a *shared*
+   * engine — it is the same isolation as before, without paying to rebuild it.
+   */
+  const idle = [];
+
+  /**
    * Look up a named range and locate its sheet. While ensuring the shape is supported.
    */
   function resolve(engine, name) {
@@ -149,13 +164,30 @@ export async function createLocalDriver({ modelPath }) {
     },
 
     /**
-     * Create a fresh run: a new engine at Step 0.
+     * Create a fresh run: an engine at Step 0.
      *
-     * The returned run owns its engine outright. Nothing here refers to it, so the
-     * run's lifetime is exactly as long as the caller keeps a reference.
+     * The run owns its engine for its whole lifetime — nothing else touches it until
+     * `dispose`, so two live runs never share state. What it no longer owns is the
+     * engine *afterwards*: `dispose` rewinds it and hands it back to the pool.
+     *
+     * **So `dispose` is load-bearing here, not cleanup.** A run that is never disposed
+     * costs a rebuild for the next one; that is the only penalty, and it is why
+     * `simulate` calls it in a `finally`.
      */
     createRun() {
-      const engine = buildEngine();
+      const engine = idle.pop() ?? buildEngine();
+
+      // What this run has changed, and what each cell held before it did. The first
+      // sighting of a cell is the authored one, so later writes to it are ignored.
+      const touched = new Map();
+      let disposed = false;
+
+      function remember(address) {
+        const key = `${address.sheet}:${address.row}:${address.col}`;
+        if (!touched.has(key)) {
+          touched.set(key, [address, engine.getCellSerialized(address)]);
+        }
+      }
 
       return {
         id: randomUUID(),
@@ -208,6 +240,9 @@ export async function createLocalDriver({ modelPath }) {
             return [cellFor(engine, name, step), value];
           });
 
+          // After the vetting pass, so a rejected update records nothing either.
+          for (const [address] of writes) remember(address);
+
           engine.batch(() => {
             for (const [address, value] of writes)
               engine.setCellContents(address, value);
@@ -226,9 +261,42 @@ export async function createLocalDriver({ modelPath }) {
           }
 
           const address = cellFor(engine, "Step", 0);
+          remember(address);
           const next = Number(engine.getCellValue(address)) + 1;
           engine.setCellContents(address, next);
           return next;
+        },
+
+        /**
+         * Rewind the engine to the workbook's authored state and hand it back.
+         *
+         * Building an engine is 87% of a run's cost, so a sweep that rebuilt one per
+         * run spent almost all its time reconstructing a workbook that never changed.
+         * Putting back the cells this run wrote is the same state for a fraction of
+         * the work: `getCellSerialized` returns the formula or literal the cell was
+         * built from, so restoring it is handing `buildFromSheets` its own input back.
+         * One `batch` for the lot, so the model recalculates once rather than per cell.
+         *
+         * A failed restore leaves an engine nobody can trust, so it is dropped rather
+         * than pooled — the cost of that is a rebuild, and the cost of the alternative
+         * is every later run being quietly wrong.
+         */
+        dispose() {
+          if (disposed) return;
+          disposed = true;
+
+          try {
+            engine.batch(() => {
+              for (const [address, content] of touched.values()) {
+                engine.setCellContents(address, content);
+              }
+            });
+          } catch {
+            return;
+          }
+          // A sweep only ever needs one. The cap is so a burst of concurrent runs
+          // cannot pin half a gigabyte each for the life of the process.
+          if (idle.length < IDLE_LIMIT) idle.push(engine);
         },
       };
     },

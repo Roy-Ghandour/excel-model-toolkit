@@ -104,50 +104,66 @@ than one project.
 
 ---
 
-## Short runs leave an authored-default tail; the exporter owns the trim
+## `randomSettings` ships ahead of its caller
 
-**Decided 2026-09-10. Not built.**
+**Decided 2026-09-13. Built, unused.**
 
-A run file may declare fewer steps than the model's timeline is wide.
-[`replay`](../src/core/replay.js) drives exactly `steps.length` transitions and then
-reads the **whole** timeline, so the columns past the end of the run come back
-populated with whatever the model computes from its **authored** cell contents.
+Every simulation now implements `randomSettings(rng)`, which draws one legal settings
+map. Nothing calls it. [`sweep`](../src/tools/sweep.js) requires a settings file, and
+[`sample`](../src/tools/sample.js) always has.
 
-`runs/savings-varied.run.json` (8 steps against a 13-column horizon) shows it:
+**Why it exists anyway.** A deliberate exception to YAGNI, made explicitly rather than
+by drift: it was written alongside `results` as one expansion of the rules interface,
+while the reasoning about what a simulation declares about itself was in front of us.
+Adding it later would mean reopening every simulation for a second time.
 
-```
-Step                8
-transactionAmount   [250, 250, 0, -100, 400, 0, 125, 125, 0, 0, 0, 0, 0]
-Balance             [1000, 1337.5, ..., 3210.10, 3434.81, 3675.24, 3932.51, 4207.79]
-                                          ^ end of run          ^ end of horizon
-```
+**The tension a caller has to resolve.** AI-Gov's settings *imply the run's length* —
+`NumYears + 1 === stepCount`, enforced by `checkStep` at step 0. So `randomSettings`
+draws a `NumYears` of 3 to 6 that will contradict any `--steps` the caller was also
+given. **A tool that draws settings derives its length from them**, rather than taking
+a length and hoping the draw agrees. That inverts the argument handling of both tools
+that exist today, which is the real reason neither calls it yet.
 
-**This is correct behaviour, not a bug.** Stopping early and leaving the sheet to
-compute the rest of its horizon is what Epicenter does too — the driver is not
-diverging from the runtime, and reading the full state is the right call for
-something whose job is to produce numbers rather than choose which ones matter.
+**Where it plugs in.** A future generation tool that wants variety across settings and
+not only across decisions — `sweep --random-settings`, most likely, with `--steps`
+becoming derived rather than required.
 
-**The two hazards it creates.**
+---
 
-1. **The tail is authored defaults, not zeros.** In `test.xlsx` the unwritten
-   decision cells are empty, so they read `0` and a short run's tail looks like
-   idling. That is a property of *that workbook*. A model shipped with non-zero
-   authored decisions — which AIGovModel plausibly is, given the live sim carries
-   `defaultSimSettings` — would instead run its own defaults past the end of the
-   run. Verify this explicitly against AIGovModel rather than inheriting the
-   assumption from the savings model.
-2. **`final` mixes two time scopes.** Scalars are step-scoped (`Step` is 8); arrays
-   are horizon-scoped (13 entries). So `final.Balance[8]` is the run's end state and
-   `final.Balance.at(-1)` is four further years of default-driven growth. On a
-   full-length run the two coincide — which is exactly the trap: `.at(-1)` looks
-   right everywhere until a short run reaches it.
+## Running a sweep's runs in parallel
 
-**Why nothing changes today.** The information needed to trim is already present and
-already specified: `steps.length` is the length of the run, and nothing else declares
-it ([run-file.md](runFile/run-file.md#L79)). Truncating inside `replay` would throw
-away real model output that some analysis may legitimately want.
+**Decided 2026-09-13. Measured, not built.**
 
-**Where it plugs in.** The CSV/XLSX exporter. It carries the step count and picks
-**one** convention — either truncate timelines to `Step`, or emit the column index
-alongside each value — so "end of run" is unambiguous in the output rather than
-re-derived, differently, by each analysis downstream.
+`sweep` drives its runs one at a time. Worker threads would parallelise them — each run
+is fully independent — but the measurements say it is not worth it yet.
+
+**Note first that `Promise.all` would do nothing.** The local driver's `read`, `write`
+and `step` are synchronous ([`localDriver.js`](../src/drivers/local/localDriver.js)); the
+`await`s in [`simulate`](../src/core/simulate.js) exist for the Forio driver, which is
+genuinely async. Concurrency on the local path needs real threads, not promises.
+
+**Worker threads, measured on a 4-physical-core machine**, 24 runs of AIGovModel:
+
+| workers | wall | speedup |
+|---|---|---|
+| 1 | 40.1s | 0.97x |
+| 2 | 23.6s | 1.64x |
+| 3 | 20.8s | **1.86x** |
+| 4 | 21.5s | 1.80x |
+| 6 | 23.8s | 1.62x |
+
+It peaks at three and then *degrades*. An engine of AIGovModel is ~460MB, so several at
+once are bound by memory bandwidth rather than CPU, and each worker also parses the
+workbook itself. Output was verified identical to the sequential path.
+
+**Why deferred.** Engine reuse shipped instead and was worth far more — 1.45s to 0.29s
+per run, taking 100 runs from 2m30s to 31s — because 87% of a run was
+`HyperFormula.buildFromSheets` rather than the simulation. 1.86x on top of that is a
+poor return for a worker pool, slicing, and per-worker workbook parses.
+
+**Where it plugs in.** The loop in [`sweep`](../src/tools/sweep.js), behind a `--workers`
+flag. Note that engine reuse makes this *worse* per worker, not better: each worker would
+hold its own pooled engine, multiplying the memory pressure that already caps the curve
+above. Re-measure before building.
+
+---

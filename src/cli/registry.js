@@ -1,5 +1,6 @@
 import { execute } from "../tools/execute.js";
 import { sample } from "../tools/sample.js";
+import { sweep } from "../tools/sweep.js";
 import { test } from "../tools/test.js";
 import { testFull } from "../tools/testFull.js";
 
@@ -8,4 +9,4 @@ import { testFull } from "../tools/testFull.js";
  *
  * @type {import('./dispatch.js').Tool[]}
  */
-export const tools = [execute, sample, test, testFull];
+export const tools = [execute, sample, sweep, test, testFull];

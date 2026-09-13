@@ -22,12 +22,19 @@
  * `sample` draws only from the legal set, which is why generation needs no
  * draw-and-reject loop; `checkStep` stays on while it does, as an assertion.
  *
+ * `results` is the other half of `settings`: the named ranges an export carries out,
+ * where `settings` are the ones a run carries in. Which ranges are worth reporting is
+ * as simulation-specific as which decisions are legal, so it lives here rather than in
+ * an exporter that would otherwise have to know one model from another.
+ *
  * @typedef {object} Rules
  * @property {number} minSteps Shortest legal run.
  * @property {number} maxSteps Longest legal run.
  * @property {string[]} settings Exactly the settings a run file must declare.
+ * @property {string[]} results The named ranges an export reports, in column order.
  * @property {(step: { step: number, length: number, writes: object, before: object, after: object }) => Array<{ name: string, reason: string }>} checkStep Returns a violation per illegal decision.
  * @property {(step: number, state: object, rng: import('./rng.js').Rng) => Record<string, number>} [sample] Invents one step's writes. Absent, the simulation cannot be generated.
+ * @property {(rng: import('./rng.js').Rng) => Record<string, number>} [randomSettings] Draws one legal settings map, exactly the keys in `settings`.
  */
 
 /**
@@ -92,7 +99,6 @@ export async function simulate(
       violations,
     };
   } finally {
-    // Forio runs outlive the process unless removed; local runs have nothing to release.
     await run.dispose?.();
   }
 }
